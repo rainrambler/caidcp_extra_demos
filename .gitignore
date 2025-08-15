@@ -1,5 +1,4 @@
 .vscode/
 安全审计报告.md
-uplaods/
-secure_file_upload_demo/
-file_upload_demo/
+uploads/
+*.class
