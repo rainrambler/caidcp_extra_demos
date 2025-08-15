@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>完整性验证与违规处理</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chosen Palette: Professional Blue & Slate -->
+    <!-- Application Structure Plan: The SPA is designed as an interactive reference guide. The structure follows the source document's logical flow but enhances it with interactivity. A sticky top navigation bar allows quick access to the four main sections: Standards, Process, Handling, and Policy. Key procedural information, like the CI/CD pipeline and violation handling workflow, is transformed from text into visual, interactive diagrams. Complex tables are styled for readability and responsiveness. This structure turns a dense specification document into an easily navigable and digestible tool for engineers and managers. -->
+    <!-- Visualization & Content Choices: 1) Navigation (Goal: Organize): A sticky header with smooth-scrolling links serves as a persistent table of contents. 2) CI/CD Pipeline (Goal: Organize/Change): An interactive vertical timeline built with HTML/CSS visually represents the process flow. Clicking on each stage highlights it and reveals details, which is more intuitive than reading a long list. 3) Tables (Goal: Compare/Inform): Standard HTML tables for RACI, metrics, and violation levels are styled with alternating row colors and responsive horizontal scrolling to handle dense information cleanly. 4) Code Block (Goal: Inform): The YAML example is presented in a formatted block with a distinct background for clarity. 5) Accordions/Cards (Goal: Inform): Key concepts like grading standards and supporting mechanisms are placed in distinct cards or accordions to break up text and create visual hierarchy. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        :root {
+            --primary-color: #3b82f6; /* blue-500 */
+            --primary-hover: #2563eb; /* blue-600 */
+        }
+        html {
+            scroll-behavior: smooth;
+        }
+        body {
+            font-family: 'Inter', 'Helvetica Neue', 'Arial', 'sans-serif';
+            background-color: #f1f5f9; /* slate-100 */
+            color: #334155; /* slate-700 */
+        }
+        .card {
+            background-color: #ffffff;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        }
+        .nav-link {
+            transition: all 0.2s ease-in-out;
+            border-bottom: 2px solid transparent;
+        }
+        .nav-link:hover, .nav-link.active {
+            color: var(--primary-color);
+            border-bottom-color: var(--primary-color);
+        }
+        .table-responsive {
+            display: block;
+            width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        .timeline-item {
+            position: relative;
+            padding-left: 2.5rem;
+            padding-bottom: 2rem;
+            border-left: 2px solid #e2e8f0; /* slate-200 */
+        }
+        .timeline-item:last-child {
+            border-left: 2px solid transparent;
+            padding-bottom: 0;
+        }
+        .timeline-dot {
+            position: absolute;
+            left: -0.5rem;
+            top: 0.25rem;
+            width: 1rem;
+            height: 1rem;
+            border-radius: 9999px;
+            background-color: #cbd5e1; /* slate-300 */
+            border: 2px solid white;
+            transition: all 0.3s ease;
+        }
+        .timeline-item.active .timeline-dot {
+            background-color: var(--primary-color);
+            transform: scale(1.25);
+        }
+        .code-block {
+            background-color: #1e293b; /* slate-800 */
+            color: #e2e8f0; /* slate-200 */
+            padding: 1rem;
+            border-radius: 0.5rem;
+            overflow-x: auto;
+            font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
+            font-size: 0.875rem;
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <header class="bg-white/80 backdrop-blur-lg sticky top-0 z-50 shadow-sm">
+        <nav class="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex-shrink-0">
+                    <h1 class="text-lg font-bold text-slate-800">完整性验证规范</h1>
+                </div>
+                <div class="hidden md:block">
+                    <div class="ml-10 flex items-baseline space-x-4">
+                        <a href="#standards" class="nav-link px-3 py-2 rounded-md text-sm font-medium text-slate-600">验证标准</a>
+                        <a href="#process" class="nav-link px-3 py-2 rounded-md text-sm font-medium text-slate-600">验证流程</a>
+                        <a href="#handling" class="nav-link px-3 py-2 rounded-md text-sm font-medium text-slate-600">违规处理</a>
+                        <a href="#policy" class="nav-link px-3 py-2 rounded-md text-sm font-medium text-slate-600">政策模板</a>
+                    </div>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <div class="container mx-auto p-4 sm:p-6 lg:p-8 max-w-5xl">
+        <main class="space-y-12">
+            
+            <section id="standards" class="card p-6 sm:p-8">
+                <h2 class="text-2xl font-bold text-slate-900 border-b pb-2 mb-6">1. 完整性验证标准</h2>
+                <p class="text-slate-600 mb-6">“验什么，达成什么线”。对不同对象设定明确、可量化的检查标准与阈值。</p>
+                
+                <h3 class="text-xl font-semibold text-slate-800 mb-4">1.1 范畴与指标</h3>
+                <div class="table-responsive">
+                    <table class="min-w-full divide-y divide-slate-200">
+                        <thead class="bg-slate-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">范畴</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">验证点</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">标准/阈值 (示例)</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-slate-200 text-sm">
+                            <tr><td class="px-6 py-4 font-semibold">源代码与依赖</td><td class="px-6 py-4">提交身份、依赖可控</td><td class="px-6 py-4">强制 GPG/SSH 提交签名；分支保护；依赖锁定 (lockfile)</td></tr>
+                            <tr class="bg-slate-50"><td class="px-6 py-4 font-semibold">构建产物</td><td class="px-6 py-4">哈希与签名、可追溯</td><td class="px-6 py-4">产物附 SHA-256 与签名 (Sigstore/cosign)；附 SBOM (CycloneDX) 与构建编号</td></tr>
+                            <tr><td class="px-6 py-4 font-semibold">构建过程</td><td class="px-6 py-4">可重复构建、供应链证明</td><td class="px-6 py-4">关键产物达 SLSA ≥ L3 (含 provenance 证明)</td></tr>
+                            <tr class="bg-slate-50"><td class="px-6 py-4 font-semibold">容器镜像</td><td class="px-6 py-4">漏洞与基线</td><td class="px-6 py-4">漏洞扫描：高危=0；中危≤N (需豁免单)；仅用白名单基础镜像</td></tr>
+                            <tr><td class="px-6 py-4 font-semibold">配置/IaC</td><td class="px-6 py-4">策略合规与漂移</td><td class="px-6 py-4">Terraform/OPA 检测阻断项=0；生产与基线差异=0</td></tr>
+                            <tr class="bg-slate-50"><td class="px-6 py-4 font-semibold">数据层</td><td class="px-6 py-4">结构/迁移校验</td><td class="px-6 py-4">外键/唯一/检查约束通过；迁移含正/反向校验；抽样哈希或行数一致</td></tr>
+                            <tr><td class="px-6 py-4 font-semibold">功能完整性</td><td class="px-6 py-4">回归与覆盖率</td><td class="px-6 py-4">核心路径用例 100% 通过；语句覆盖 ≥80%，关键域 ≥90%</td></tr>
+                            <tr class="bg-slate-50"><td class="px-6 py-4 font-semibold">安全完整性</td><td class="px-6 py-4">漏洞/机密/策略</td><td class="px-6 py-4">SAST/DAST/CredScan 阻断项=0；密钥泄露扫描=0；关键安全头/CSP/HSTS 生效</td></tr>
+                            <tr><td class="px-6 py-4 font-semibold">运行时</td><td class="px-6 py-4">签名与启动校验</td><td class="px-6 py-4">仅接收已签名产物；启动时校验签名/哈希；健康检查就绪后对外</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="mt-4 p-4 bg-yellow-50 border-l-4 border-yellow-400 text-yellow-800 text-sm">
+                    <p><strong>实施建议：</strong>挑选少数<strong>必须项</strong>作为发布门禁（Blocking Gates），其余为告警项，避免流程被过度卡死。</p>
+                </div>
+
+                <h3 class="text-xl font-semibold text-slate-800 mt-8 mb-4">1.2 分级标准</h3>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                    <div class="p-4 border border-slate-200 rounded-lg bg-slate-50"><strong class="text-blue-600">L1 (普通业务)</strong>: 产物签名 + SBOM；基础测试/扫描通过。</div>
+                    <div class="p-4 border border-slate-200 rounded-lg bg-slate-50"><strong class="text-blue-600">L2 (敏感业务)</strong>: + SLSA L3 证明、依赖来源白名单、配置合规门禁。</div>
+                    <div class="p-4 border border-slate-200 rounded-lg bg-slate-50"><strong class="text-blue-600">L3 (高合规/金融)</strong>: + 双人复核与变更审批、DB 迁移回滚演练、运行时强制验签。</div>
+                </div>
+            </section>
+
+            <section id="process" class="card p-6 sm:p-8">
+                <h2 class="text-2xl font-bold text-slate-900 border-b pb-2 mb-6">2. 验证流程规范</h2>
+                <p class="text-slate-600 mb-8">“谁在何时按什么顺序做”。将标准嵌入 CI/CD，以“门禁”控制发布质量。</p>
+                
+                <div class="space-y-8">
+                    <div>
+                        <h3 class="text-xl font-semibold text-slate-800 mb-4">2.1 CI/CD 分段门禁</h3>
+                        <div id="cicd-timeline">
+                            <!-- Timeline items will be generated by JS -->
+                        </div>
+                    </div>
+
+                    <div>
+                        <h3 class="text-xl font-semibold text-slate-800 mb-4">2.2 角色与责任 (RACI)</h3>
+                        <div class="table-responsive">
+                            <table class="min-w-full divide-y divide-slate-200 text-sm">
+                                <thead class="bg-slate-50">
+                                    <tr>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">环节</th>
+                                        <th class="px-6 py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider">研发</th>
+                                        <th class="px-6 py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider">测试</th>
+                                        <th class="px-6 py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider">安全</th>
+                                        <th class="px-6 py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider">负责人</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-slate-200">
+                                    <tr><td class="px-6 py-4 font-semibold">标准维护</td><td class="px-6 py-4 text-center">C</td><td class="px-6 py-4 text-center">C</td><td class="px-6 py-4 text-center font-bold text-blue-600">A</td><td class="px-6 py-4 text-center font-bold text-green-600">R (技术负责人)</td></tr>
+                                    <tr class="bg-slate-50"><td class="px-6 py-4 font-semibold">SAST/SCA 基线</td><td class="px-6 py-4 text-center font-bold text-green-600">R</td><td class="px-6 py-4 text-center">C</td><td class="px-6 py-4 text-center font-bold text-blue-600">A</td><td class="px-6 py-4 text-center">—</td></tr>
+                                    <tr><td class="px-6 py-4 font-semibold">漏洞/合规豁免</td><td class="px-6 py-4 text-center">C</td><td class="px-6 py-4 text-center">C</td><td class="px-6 py-4 text-center font-bold text-blue-600">A</td><td class="px-6 py-4 text-center font-bold text-green-600">R (产品/安全双签)</td></tr>
+                                    <tr class="bg-slate-50"><td class="px-6 py-4 font-semibold">发布审批</td><td class="px-6 py-4 text-center">C</td><td class="px-6 py-4 text-center">C</td><td class="px-6 py-4 text-center font-bold text-blue-600">A</td><td class="px-6 py-4 text-center font-bold text-green-600">R (变更经理)</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                         <p class="text-xs text-slate-500 mt-2">说明：R=Responsible 执行，A=Accountable 负责，C=Consulted 咨询/协作。</p>
+                    </div>
+
+                    <div>
+                        <h3 class="text-xl font-semibold text-slate-800 mb-4">2.3 证据与可追溯</h3>
+                        <p class="p-4 bg-slate-50 border border-slate-200 rounded-lg text-sm">每次构建需产出并归档：<strong>哈希、签名、SBOM、provenance、扫描报告、测试报告、审批单号</strong>。统一存放于制品库/对象存储（只读、可审计）。</p>
+                    </div>
+
+                    <div>
+                        <h3 class="text-xl font-semibold text-slate-800 mb-4">2.4 流水线示例 (GitHub Actions)</h3>
+                        <div class="code-block">
+<pre><code># 生成 SBOM + 签名 + 漏洞扫描（示例）
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip install -r requirements.txt
+      - run: pytest --maxfail=1 --cov=.
+      - run: syft . -o cyclonedx-json > sbom.json
+      - run: echo "$COSIGN_KEY" | cosign sign-blob -f - --yes artifact.tar > signature.sig
+      - run: trivy image --exit-code 1 --severity HIGH,CRITICAL myimg:tag
+      - uses: actions/upload-artifact@v4
+        with: { name: evidence, path: sbom.json }
+</code></pre>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="handling" class="card p-6 sm:p-8">
+                <h2 class="text-2xl font-bold text-slate-900 border-b pb-2 mb-6">3. 违规处理措施</h2>
+                <p class="text-slate-600 mb-8">“发现问题怎么处理”。分级、处置路径与时限明确，保障标准的严肃性与产出质量。</p>
+                
+                <div class="space-y-8">
+                    <div>
+                        <h3 class="text-xl font-semibold text-slate-800 mb-4">3.1 分级与处置</h3>
+                        <div class="table-responsive">
+                            <table class="min-w-full divide-y divide-slate-200 text-sm">
+                                <thead class="bg-slate-50">
+                                    <tr>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">级别</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">示例</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">处置</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-slate-200">
+                                    <tr><td class="px-6 py-4 font-semibold text-red-600">阻断 (Blocker)</td><td class="px-6 py-4">高危漏洞；缺签名/SBOM；验签失败；越权改配置</td><td class="px-6 py-4">立即阻断/回滚；补丁修复；安全复测后放行</td></tr>
+                                    <tr class="bg-slate-50"><td class="px-6 py-4 font-semibold text-orange-600">严重 (Major)</td><td class="px-6 py-4">中危漏洞超阈；覆盖率远低于阈；迁移校验异常</td><td class="px-6 py-4">灰度/降级；限时整改 (48–72h)；复核通过后放行</td></tr>
+                                    <tr><td class="px-6 py-4 font-semibold text-yellow-600">一般 (Minor)</td><td class="px-6 py-4">文档/证据缺失；低危告警</td><td class="px-6 py-4">记录并跟踪；下个迭代前关闭；不影响当次发布</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h3 class="text-xl font-semibold text-slate-800 mb-4">3.2 处置流程与时限 (SLA)</h3>
+                        <ol class="list-decimal list-inside space-y-2 text-sm text-slate-600">
+                            <li>发现 → 工单登记 → 风险分级</li>
+                            <li><strong>Blocker</strong>: 立即停更/回滚；24h 内提交 <strong>RCA</strong> 与修复计划</li>
+                            <li><strong>复查</strong>: 修复后进行<strong>二次验证</strong> (自动化 + 抽查)，更新审计证据</li>
+                        </ol>
+                    </div>
+
+                    <div>
+                        <h3 class="text-xl font-semibold text-slate-800 mb-4">3.3 配套机制</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                             <div class="p-4 bg-slate-50 rounded-lg border border-slate-200">
+                                <h4 class="font-semibold text-slate-700 mb-2">豁免机制</h4>
+                                <p>仅在无法即时修复且有缓解措施时允许；需风险说明、过期时间、双签审批；到期自动复审。</p>
+                             </div>
+                             <div class="p-4 bg-slate-50 rounded-lg border border-slate-200">
+                                <h4 class="font-semibold text-slate-700 mb-2">改进机制</h4>
+                                <p>同类问题重复出现需触发 <strong>根因分析</strong> 与流程/工具整改。</p>
+                             </div>
+                             <div class="p-4 bg-slate-50 rounded-lg border border-slate-200">
+                                <h4 class="font-semibold text-slate-700 mb-2">透明与教育</h4>
+                                <p>月度报表（违规类型、修复时长、阻断次数）用于团队改进（非个人惩罚导向）。</p>
+                             </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="policy" class="card p-6 sm:p-8">
+                 <h2 class="text-2xl font-bold text-slate-900 border-b pb-2 mb-6">4. 政策模板 (可直接引用)</h2>
+                 <div class="prose prose-slate max-w-none bg-slate-50 p-6 rounded-lg border border-slate-200">
+                    <blockquote>
+                        <p><strong>《完整性验证政策 (摘)》</strong></p>
+                        <ol>
+                            <li>所有发布产物必须附 <strong>SHA-256 哈希、数字签名与 SBOM</strong>；缺任一项不得发布。</li>
+                            <li>关键服务的构建过程需达到 <strong>SLSA L3</strong>，产物与源代码一一对应并可验证。</li>
+                            <li>生产环境仅接收<strong>已签名</strong>且通过<strong>漏洞与策略</strong>校验的镜像；部署前执行<strong>验签</strong>与<strong>配置合规</strong>检查。</li>
+                            <li>数据库迁移必须包含<strong>前/后置校验</strong>与<strong>回滚脚本</strong>；校验异常立即回滚。</li>
+                            <li>发现 <strong>Blocker</strong> 级违规时立即阻断并通知责任人与安全团队；修复与复查通过后方可继续。豁免需双签并设到期复审。</li>
+                        </ol>
+                    </blockquote>
+                 </div>
+            </section>
+            
+            <section id="usage-notes" class="card p-6 sm:p-8 bg-blue-50 border border-blue-200">
+                <h2 class="text-2xl font-bold text-blue-800 border-b border-blue-200 pb-2 mb-6">使用说明</h2>
+                <ul class="list-disc list-inside space-y-2 text-blue-700">
+                    <li>将“必须项”设置为 CI/CD 门禁 (Blocking Gates)。</li>
+                    <li>将证据产物 (哈希/签名/SBOM/报告) 纳入制品库归档。</li>
+                    <li>按业务敏感度选择 L1/L2/L3 基线，逐步提高。</li>
+                </ul>
+            </section>
+        </main>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // --- Data for CI/CD Timeline ---
+        const timelineData = [
+            {
+                title: "Pre-merge (合并前)",
+                content: "SAST/CredScan、单测与覆盖率阈值<br>依赖扫描 (SCA + 许可证合规)<br>代码评审 (≥1–2 人)",
+                gate: "<strong>Gate:</strong> 阻断项=0；覆盖率≥阈值；签名提交"
+            },
+            {
+                title: "Build (构建)",
+                content: "干净环境构建 → 产物、SHA-256、SBOM<br>产物签名 + provenance (in-toto/Sigstore)",
+                gate: "<strong>Gate:</strong> 缺签名/SBOM/证明 → 失败"
+            },
+            {
+                title: "Pre-release (预发布)",
+                content: "漏洞扫描 (高危=0)；IaC/配置策略 (OPA/Conftest)<br>集成/E2E/回滚演练脚本通过",
+                gate: "<strong>Gate:</strong> 阻断项=0；豁免需审批与到期"
+            },
+            {
+                title: "Deploy (发布)",
+                content: "目标环境验签、镜像哈希 pin<br>DB 迁移前后校验 (行数/哈希/抽样)",
+                gate: "<strong>Gate:</strong> 验签/校验异常 → 自动回滚"
+            },
+            {
+                title: "Post-deploy (发布后)",
+                content: "运行健康、日志/指标基线对比<br>漂移检测；审计证据归档",
+                gate: ""
+            }
+        ];
+
+        const timelineContainer = document.getElementById('cicd-timeline');
+
+        // --- Render CI/CD Timeline ---
+        timelineData.forEach((item, index) => {
+            const itemEl = document.createElement('div');
+            itemEl.className = 'timeline-item';
+            itemEl.innerHTML = `
+                <div class="timeline-dot"></div>
+                <h4 class="font-bold text-lg text-slate-800 mb-2">${item.title}</h4>
+                <div class="text-slate-600 text-sm space-y-2">
+                    <p>${item.content}</p>
+                    ${item.gate ? `<p class="mt-2 p-2 bg-blue-50 text-blue-700 border border-blue-200 rounded-md">${item.gate}</p>` : ''}
+                </div>
+            `;
+            timelineContainer.appendChild(itemEl);
+        });
+        
+        // --- Active Nav Link on Scroll ---
+        const sections = document.querySelectorAll('section');
+        const navLinks = document.querySelectorAll('.nav-link');
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    navLinks.forEach(link => {
+                        link.classList.remove('active');
+                        if (link.getAttribute('href').substring(1) === entry.target.id) {
+                            link.classList.add('active');
+                        }
+                    });
+                }
+            });
+        }, { rootMargin: "-50% 0px -50% 0px" });
+
+        sections.forEach(section => {
+            observer.observe(section);
+        });
+
+        // --- Animate timeline on first view ---
+        const timelineObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const items = entry.target.querySelectorAll('.timeline-item');
+                    items.forEach((item, index) => {
+                        setTimeout(() => {
+                           item.classList.add('active');
+                        }, index * 200);
+                    });
+                    timelineObserver.unobserve(entry.target);
+                }
+            });
+        }, { threshold: 0.5 });
+
+        if(timelineContainer) {
+             timelineObserver.observe(timelineContainer);
+        }
+    });
+    </script>
+</body>
+</html>
