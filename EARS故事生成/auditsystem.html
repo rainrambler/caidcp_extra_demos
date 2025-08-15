@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>交互式产品评价审核流程</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chosen Palette: Calm Slate & Sand -->
+    <!-- Application Structure Plan: The application is designed as an interactive simulator rather than a data dashboard. This structure was chosen because the source material is a requirements document describing a process, not a dataset. The SPA is divided into four key sections: 1) An interactive workflow diagram to provide a high-level overview. 2) A core simulator where users can act as both buyers and admins to experience the review lifecycle firsthand. 3) A sensitive word list manager to demonstrate the dynamic nature of the filter. 4) A reference section containing the original user stories. This task-oriented, hands-on approach makes the abstract rules tangible and easier for stakeholders (PMs, devs, QA) to understand and validate. -->
+    <!-- Visualization & Content Choices: Instead of charts (like Chart.js), which are unsuitable for procedural requirements, the application uses specific, goal-oriented presentations. 1) Workflow Diagram (Goal: Organize): Built with styled HTML/CSS (Tailwind) to visually map the review states (Submit -> Auto-Scan -> Pending/Public -> Manual Review -> Public/Hidden). It highlights dynamically to reflect the user's actions in the simulator. 2) Interactive Forms & Lists (Goal: Interact/Inform): Standard HTML forms and dynamically updated lists are used to create the core simulation. This provides a direct, hands-on way to test the logic described in the user stories. 3) Accordion (Goal: Inform): The original requirements are placed in an HTML <details> accordion, keeping reference material accessible but unobtrusive. This structure directly translates the source document's logic into an interactive experience. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+            background-color: #f4f1eb; /* Warm neutral background */
+            color: #4a5568;
+        }
+        .card {
+            background-color: #ffffff;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            transition: all 0.3s ease-in-out;
+        }
+        .btn {
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            transition: all 0.2s ease-in-out;
+            cursor: pointer;
+            border: 1px solid transparent;
+        }
+        .btn-primary {
+            background-color: #3b82f6; /* Blue-500 */
+            color: white;
+        }
+        .btn-primary:hover {
+            background-color: #2563eb; /* Blue-600 */
+        }
+        .btn-secondary {
+            background-color: #e5e7eb; /* Gray-200 */
+            color: #374151; /* Gray-700 */
+        }
+        .btn-secondary:hover {
+            background-color: #d1d5db; /* Gray-300 */
+        }
+        .btn-approve {
+            background-color: #22c55e; /* Green-500 */
+            color: white;
+        }
+        .btn-approve:hover {
+            background-color: #16a34a; /* Green-600 */
+        }
+        .btn-reject {
+            background-color: #ef4444; /* Red-500 */
+            color: white;
+        }
+        .btn-reject:hover {
+            background-color: #dc2626; /* Red-600 */
+        }
+        .summary-level-1 {
+            padding: 1rem 1.5rem;
+            font-size: 1.125rem; /* text-lg */
+            color: #1e293b; /* slate-800 */
+            border-radius: 0.5rem;
+        }
+        .summary-level-1:hover {
+            background-color: #f1f5f9; /* slate-100 */
+        }
+        .content-level-1 {
+            padding: 0 1.5rem 1rem 3rem;
+            border-left: 2px solid #e2e8f0; /* slate-200 */
+            margin-left: calc(1.5rem - 1px);
+        }
+        .summary-level-2 {
+            padding: 0.75rem 1rem;
+            font-size: 1rem;
+            color: #334155; /* slate-700 */
+            background-color: #f8fafc; /* slate-50 */
+            border-radius: 0.5rem;
+        }
+        .summary-level-2:hover {
+            background-color: #f1f5f9; /* slate-100 */
+        }
+        .content-level-2 {
+            padding: 1rem 1rem 1rem 2.25rem;
+            background-color: #f8fafc; /* slate-50 */
+            border-left: 2px solid #e2e8f0; /* slate-200 */
+            margin-left: calc(1rem - 1px);
+            border-bottom-left-radius: 0.5rem;
+            border-bottom-right-radius: 0.5rem;
+        }
+        .workflow-box {
+            border: 2px solid #d1d5db;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            text-align: center;
+            transition: all 0.3s ease;
+            background-color: white;
+        }
+        .workflow-box.active {
+            border-color: #3b82f6;
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.5);
+            transform: scale(1.05);
+        }
+        .workflow-arrow {
+            color: #9ca3af;
+            font-size: 2rem;
+            line-height: 1;
+        }
+        textarea:focus, input:focus {
+            outline: 2px solid #3b82f6;
+            outline-offset: 2px;
+        }
+        details > summary {
+            cursor: pointer;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <div class="container mx-auto p-4 md:p-8 max-w-7xl">
+        <header class="text-center mb-10">
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-800">产品评价自动审核流程</h1>
+            <p class="mt-2 text-lg text-gray-600">一个交互式模拟器，用于理解和测试内容审核规则。</p>
+        </header>
+
+        <main class="space-y-12">
+            <!-- Section 1: Workflow Diagram -->
+            <section id="workflow-diagram" class="card p-6">
+                <h2 class="text-2xl font-bold text-gray-800 mb-2">审核工作流</h2>
+                <p class="text-gray-600 mb-6">这是评价从提交到最终发布的完整生命周期。在下方模拟器中操作时，当前状态会在此处高亮显示。</p>
+                <div class="grid grid-cols-3 sm:grid-cols-5 items-center gap-2 md:gap-4 text-sm md:text-base">
+                    <div id="flow-submit" class="workflow-box">评价提交</div>
+                    <div class="workflow-arrow text-center">→</div>
+                    <div id="flow-scan" class="workflow-box">系统自动扫描</div>
+                    <div class="workflow-arrow text-center hidden sm:block">→</div>
+                    <div class="flex flex-col gap-2 sm:col-span-1 col-span-3 mt-4 sm:mt-0">
+                        <div class="workflow-arrow text-center sm:hidden mx-auto transform rotate-90">↓</div>
+                        <div id="flow-pending" class="workflow-box">进入待审核</div>
+                        <div id="flow-public-initial" class="workflow-box">直接发布</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Section 2: Simulator -->
+            <section id="simulator" class="card p-6">
+                <h2 class="text-2xl font-bold text-gray-800 mb-2">流程模拟器</h2>
+                <p class="text-gray-600 mb-6">在这里，您可以扮演不同角色来测试审核流程。尝试提交包含或不包含敏感词的评价，然后在管理员面板中处理它们。</p>
+                <div class="grid md:grid-cols-2 gap-8">
+                    
+                    <!-- Buyer's View -->
+                    <div class="space-y-4">
+                        <h3 class="text-xl font-semibold text-gray-700">1. 作为买家：提交评价</h3>
+                        <form id="review-form">
+                            <textarea id="review-content" class="w-full p-3 border border-gray-300 rounded-lg h-32" placeholder="请在此处输入您的评价... 试着输入一些词，比如 '垃圾' 或 '骗子'。"></textarea>
+                            <button type="submit" class="btn btn-primary mt-2">提交评价</button>
+                        </form>
+                        <div class="mt-6">
+                            <h4 class="font-semibold text-gray-700">公开的评价列表</h4>
+                            <div id="public-reviews" class="mt-2 p-4 bg-gray-50 rounded-lg min-h-[100px] text-gray-500 italic">
+                                暂无公开评价。
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Admin's View -->
+                    <div class="space-y-4">
+                        <h3 class="text-xl font-semibold text-gray-700">2. 作为管理员：处理队列</h3>
+                        <div>
+                            <h4 class="font-semibold text-gray-700">待审核队列</h4>
+                            <div id="pending-reviews" class="mt-2 p-4 bg-yellow-50 border border-yellow-200 rounded-lg min-h-[100px] text-gray-500 italic">
+                                暂无需要审核的评价。
+                            </div>
+                        </div>
+                         <div>
+                            <h4 class="font-semibold text-gray-700">已隐藏的评价 (仅管理员可见)</h4>
+                            <div id="hidden-reviews" class="mt-2 p-4 bg-red-50 border border-red-200 rounded-lg min-h-[100px] text-gray-500 italic">
+                                暂无隐藏的评价。
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Section 3: Sensitive Words Manager -->
+            <section id="word-manager" class="card p-6">
+                 <h2 class="text-2xl font-bold text-gray-800 mb-2">敏感词库管理器</h2>
+                 <p class="text-gray-600 mb-6">系统根据这个词库来判断评价是否需要审核。您可以动态添加或删除词语来观察对模拟结果的影响。</p>
+                 <div class="flex flex-col sm:flex-row gap-4">
+                    <div class="flex-grow">
+                        <h3 class="font-semibold text-gray-700 mb-2">当前词库:</h3>
+                        <div id="sensitive-words-list" class="flex flex-wrap gap-2 p-3 bg-gray-50 rounded-lg min-h-[40px]">
+                        </div>
+                    </div>
+                    <form id="add-word-form" class="sm:w-1/3">
+                        <h3 class="font-semibold text-gray-700 mb-2">添加新词:</h3>
+                        <div class="flex gap-2">
+                           <input type="text" id="new-word-input" class="w-full p-2 border border-gray-300 rounded-lg" placeholder="输入新词...">
+                           <button type="submit" class="btn btn-secondary">添加</button>
+                        </div>
+                    </form>
+                 </div>
+            </section>
+
+            <!-- Section 4: Requirements Reference -->
+            <section id="requirements" class="card p-6">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6">需求规格参考</h2>
+                <div class="space-y-4">
+                    <!-- 用户故事 5 -->
+                    <details>
+                        <summary class="summary-level-1">用户故事 5: 系统自动标记不当评价</summary>
+                        <div class="content-level-1 space-y-4 pt-4">
+                            <p><strong>用户故事:</strong> 作为平台管理员，我希望系统能自动识别并标记出含有不当用语的评价，以便我能集中处理这些问题评价，而无需手动阅读所有内容。</p>
+                            <p><strong>核心需求:</strong> 系统必须能够扫描用户提交的评价内容，如果内容命中预设的敏感词库，则自动将其标记为“待审核”状态，并且不公开发布。</p>
+                            <div class="space-y-2">
+                                <h4 class="font-semibold text-slate-800">验收条件:</h4>
+                                <details>
+                                    <summary class="summary-level-2">AC1: 成功标记不当评价</summary>
+                                    <div class="content-level-2 space-y-2 text-slate-600">
+                                        <p><strong>当</strong> 用户提交的评价内容中包含一个或多个来自系统“敏感词库”的词语时，</p>
+                                        <p><strong>系统应</strong> 自动将该评价的状态设置为“待审核”。</p>
+                                    </div>
+                                </details>
+                                <details>
+                                    <summary class="summary-level-2">AC2: 正常处理合规评价</summary>
+                                    <div class="content-level-2 space-y-2 text-slate-600">
+                                        <p><strong>当</strong> 用户提交的评价内容中**不**包含任何来自系统“敏感词库”的词语时，</p>
+                                        <p><strong>系统应</strong> 按照标准流程将其状态设置为“公开”。</p>
+                                    </div>
+                                </details>
+                                <details>
+                                    <summary class="summary-level-2">AC3: 待审核评价的隔离</summary>
+                                    <div class="content-level-2 space-y-2 text-slate-600">
+                                        <p><strong>当</strong> 一条评价的状态为“待审核”时，</p>
+                                        <p><strong>系统应</strong> 确保该评价不会在前端商品页面的任何评价列表中对普通买家显示。</p>
+                                    </div>
+                                </details>
+                                <details>
+                                    <summary class="summary-level-2">AC4: 可维护的敏感词库</summary>
+                                    <div class="content-level-2 space-y-2 text-slate-600">
+                                        <p><strong>对于</strong> 管理员，</p>
+                                        <p><strong>系统应</strong> 提供一个后台管理界面，允许管理员添加、删除或修改“敏感词库”中的词语，而无需改动代码。</p>
+                                    </div>
+                                </details>
+                            </div>
+                        </div>
+                    </details>
+
+                    <!-- 用户故事 6 -->
+                    <details>
+                        <summary class="summary-level-1">用户故事 6: 管理员处理待审核评价</summary>
+                        <div class="content-level-1 space-y-4 pt-4">
+                            <p><strong>用户故事:</strong> 作为平台管理员，我需要一个专门的列表来查看所有被系统标记为“待审核”的评价，以便我能快速地进行人工审核，并决定是批准发布还是直接隐藏。</p>
+                            <p><strong>核心需求:</strong> 系统必须为管理员提供一个专门的界面（审核队列），用于展示所有“待审核”的评价，并提供相应的处理操作（批准/隐藏）。</p>
+                            <div class="space-y-2">
+                                <h4 class="font-semibold text-slate-800">验收条件:</h4>
+                                <details>
+                                    <summary class="summary-level-2">AC1: 查看待审核列表</summary>
+                                    <div class="content-level-2 space-y-2 text-slate-600">
+                                        <p><strong>当</strong> 管理员访问“评价审核”后台页面时，</p>
+                                        <p><strong>系统应</strong> 展示一个列表，其中包含所有状态为“待审核”的评价。</p>
+                                    </div>
+                                </details>
+                                <details>
+                                    <summary class="summary-level-2">AC2: 批准评价</summary>
+                                    <div class="content-level-2 space-y-2 text-slate-600">
+                                        <p><strong>当</strong> 管理员在审核队列中对某条评价点击“批准”按钮时，</p>
+                                        <p><strong>系统应</strong> 将该评价的状态从“待审核”更新为“公开”，并使其在前端对买家可见。</p>
+                                    </div>
+                                </details>
+                                <details>
+                                    <summary class="summary-level-2">AC3: 拒绝（隐藏）评价</summary>
+                                    <div class="content-level-2 space-y-2 text-slate-600">
+                                        <p><strong>当</strong> 管理员在审核队列中对某条评价点击“拒绝”或“隐藏”按钮时，</p>
+                                        <p><strong>系统应</strong> 将该评价的状态从“待审核”更新为“已隐藏”。</p>
+                                    </div>
+                                </details>
+                                <details>
+                                    <summary class="summary-level-2">AC4: 处理空列表情况</summary>
+                                    <div class="content-level-2 space-y-2 text-slate-600">
+                                        <p><strong>当</strong> 没有评价处于“待审核”状态时，</p>
+                                        <p><strong>系统应</strong> 在“评价审核”页面显示一条明确的提示信息，例如“当前没有需要审核的评价”。</p>
+                                    </div>
+                                </details>
+                            </div>
+                        </div>
+                    </details>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- STATE ---
+            let reviews = [];
+            let sensitiveWords = ['垃圾', '骗子', '假货'];
+            let nextReviewId = 0;
+
+            // --- DOM ELEMENTS ---
+            const reviewForm = document.getElementById('review-form');
+            const reviewContentInput = document.getElementById('review-content');
+            const publicReviewsContainer = document.getElementById('public-reviews');
+            const pendingReviewsContainer = document.getElementById('pending-reviews');
+            const hiddenReviewsContainer = document.getElementById('hidden-reviews');
+            
+            const sensitiveWordsList = document.getElementById('sensitive-words-list');
+            const addWordForm = document.getElementById('add-word-form');
+            const newWordInput = document.getElementById('new-word-input');
+            
+            const flowBoxes = {
+                submit: document.getElementById('flow-submit'),
+                scan: document.getElementById('flow-scan'),
+                pending: document.getElementById('flow-pending'),
+                public: document.getElementById('flow-public-initial')
+            };
+
+            // --- RENDER FUNCTIONS ---
+            const highlightWorkflow = (boxKey) => {
+                Object.values(flowBoxes).forEach(box => box.classList.remove('active'));
+                if (boxKey && flowBoxes[boxKey]) {
+                    flowBoxes[boxKey].classList.add('active');
+                    setTimeout(() => {
+                         if (flowBoxes[boxKey]) flowBoxes[boxKey].classList.remove('active');
+                    }, 1500);
+                }
+            };
+
+            const renderReviews = () => {
+                const publicReviews = reviews.filter(r => r.status === 'public');
+                const pendingReviews = reviews.filter(r => r.status === 'pending');
+                const hiddenReviews = reviews.filter(r => r.status === 'hidden');
+
+                renderList(publicReviewsContainer, publicReviews, '暂无公开评价。');
+                renderList(pendingReviewsContainer, pendingReviews, '暂无需要审核的评价。');
+                renderList(hiddenReviewsContainer, hiddenReviews, '暂无隐藏的评价。');
+            };
+            
+            const renderList = (container, items, emptyMessage) => {
+                container.innerHTML = '';
+                if (items.length === 0) {
+                    container.innerHTML = `<p class="text-gray-500 italic">${emptyMessage}</p>`;
+                    return;
+                }
+                items.forEach(review => {
+                    const reviewEl = document.createElement('div');
+                    reviewEl.className = 'p-3 mb-2 bg-white border border-gray-200 rounded-md shadow-sm';
+                    
+                    let contentHTML = `<p class="text-gray-800">${review.content}</p>`;
+                    
+                    if (review.status === 'pending') {
+                       contentHTML += `
+                         <div class="mt-2 flex gap-2">
+                            <button class="btn btn-approve text-xs" data-id="${review.id}" data-action="approve">批准</button>
+                            <button class="btn btn-reject text-xs" data-id="${review.id}" data-action="reject">隐藏</button>
+                         </div>`;
+                    }
+                    
+                    reviewEl.innerHTML = contentHTML;
+                    container.appendChild(reviewEl);
+                });
+            };
+
+            const renderSensitiveWords = () => {
+                sensitiveWordsList.innerHTML = '';
+                if (sensitiveWords.length === 0) {
+                     sensitiveWordsList.innerHTML = `<p class="text-gray-500 italic">词库为空。</p>`;
+                } else {
+                    sensitiveWords.forEach(word => {
+                        const wordEl = document.createElement('span');
+                        wordEl.className = 'flex items-center bg-blue-100 text-blue-800 text-sm font-semibold px-2.5 py-0.5 rounded-full';
+                        wordEl.innerHTML = `
+                            ${word}
+                            <button data-word="${word}" class="ml-2 text-blue-600 hover:text-blue-800 font-bold">×</button>
+                        `;
+                        sensitiveWordsList.appendChild(wordEl);
+                    });
+                }
+            };
+
+            // --- EVENT HANDLERS ---
+            reviewForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const content = reviewContentInput.value.trim();
+                if (!content) return;
+
+                highlightWorkflow('submit');
+
+                setTimeout(() => {
+                    highlightWorkflow('scan');
+                    const containsSensitiveWord = sensitiveWords.some(word => content.includes(word));
+                    
+                    const newReview = {
+                        id: nextReviewId++,
+                        content: content,
+                        status: containsSensitiveWord ? 'pending' : 'public'
+                    };
+                    reviews.push(newReview);
+                    
+                    setTimeout(() => {
+                        highlightWorkflow(newReview.status);
+                        renderReviews();
+                    }, 700);
+
+                }, 700);
+
+                reviewContentInput.value = '';
+            });
+
+            addWordForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const newWord = newWordInput.value.trim();
+                if (newWord && !sensitiveWords.includes(newWord)) {
+                    sensitiveWords.push(newWord);
+                    renderSensitiveWords();
+                }
+                newWordInput.value = '';
+            });
+
+            sensitiveWordsList.addEventListener('click', (e) => {
+                if (e.target.tagName === 'BUTTON' && e.target.dataset.word) {
+                    const wordToRemove = e.target.dataset.word;
+                    sensitiveWords = sensitiveWords.filter(w => w !== wordToRemove);
+                    renderSensitiveWords();
+                }
+            });
+            
+            const handleAdminAction = (e) => {
+                if (e.target.tagName !== 'BUTTON') return;
+                
+                const id = parseInt(e.target.dataset.id);
+                const action = e.target.dataset.action;
+                const review = reviews.find(r => r.id === id);
+
+                if (review) {
+                    if (action === 'approve') {
+                        review.status = 'public';
+                    } else if (action === 'reject') {
+                        review.status = 'hidden';
+                    }
+                    renderReviews();
+                }
+            };
+            
+            pendingReviewsContainer.addEventListener('click', handleAdminAction);
+
+
+            // --- INITIALIZATION ---
+            const init = () => {
+                renderReviews();
+                renderSensitiveWords();
+            };
+
+            init();
+        });
+    </script>
+</body>
+</html>

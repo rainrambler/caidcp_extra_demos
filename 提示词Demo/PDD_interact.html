@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>交互式应用：提示词驱动安全开发实战</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Secure Blue -->
+    <!-- Application Structure Plan: 本SPA采用卡片式、模块化的信息架构。主页是一个“安全场景”的网格画廊，允许用户非线性地探索各个主题。点击卡片会触发一个全屏模态窗口，该窗口内部使用标签页（Tabs）来组织内容，清晰地划分了“场景介绍”、“不安全演示”、“安全演示”和“AI审计”等模块。这种结构将源报告的线性内容转化为可互动、可比较的学习单元，极大地提升了用户体验和知识吸收效率。 -->
+    <!-- Visualization & Content Choices: 报告信息 -> 不安全 vs. 安全的提示词与代码；目标 -> 对比与教育；可视化 -> 结构化的代码块与文本并列展示；交互 -> 点击卡片打开模态，点击标签页切换内容，点击按钮复制代码；理由 -> 通过强烈的视觉对比和互动操作，强化用户对精确提示词重要性的认知。未使用传统图表，因为内容的核心是代码和文本的对比。 -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', 'Noto Sans SC', sans-serif;
+            background-color: #f0f4f8; /* A light, techy blue-gray */
+        }
+        .scenario-card {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .scenario-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+        }
+        #modal {
+            transition: opacity 0.3s ease;
+        }
+        .modal-content {
+            transition: transform 0.3s ease;
+        }
+        .code-block {
+            position: relative;
+            background-color: #1e293b; /* slate-800 */
+            color: #e2e8f0; /* slate-200 */
+            border-radius: 0.5rem;
+            padding: 1rem;
+            font-family: 'Courier New', Courier, monospace;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        .copy-btn {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            background-color: #475569; /* slate-600 */
+            color: white;
+            border: none;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            cursor: pointer;
+            opacity: 0.5;
+            transition: opacity 0.2s ease;
+        }
+        .code-block:hover .copy-btn {
+            opacity: 1;
+        }
+        .tab-active {
+            border-color: #0ea5e9; /* sky-500 */
+            background-color: #0ea5e9;
+            color: white;
+        }
+        .tab-inactive {
+            border-color: transparent;
+            color: #334155; /* slate-700 */
+        }
+    </style>
+</head>
+<body class="antialiased text-slate-800">
+
+    <!-- Header -->
+    <header class="bg-white/80 backdrop-blur-md sticky top-0 z-50 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <h1 class="text-3xl font-bold text-sky-600 text-center">提示词驱动安全开发(PDD)实战</h1>
+            <p class="text-center text-slate-600 mt-2">学习如何通过精确的提示词，驾驭AI生成安全、可靠的代码。</p>
+        </div>
+    </header>
+
+    <!-- Main Content: Scenario Grid -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div id="scenario-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        </div>
+    </main>
+
+    <!-- Modal -->
+    <div id="modal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50 hidden opacity-0">
+        <div id="modal-content" class="modal-content bg-slate-50 rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col transform scale-95">
+            <div class="flex items-center justify-between p-4 border-b border-slate-200">
+                <h2 id="modal-title" class="text-2xl font-bold text-sky-700"></h2>
+                <button id="modal-close" class="text-3xl text-slate-500 hover:text-slate-800">&times;</button>
+            </div>
+            <div id="modal-body" class="p-6 overflow-y-auto">
+            </div>
+        </div>
+    </div>
+
+    <footer class="text-center py-6 text-slate-500">
+        <p>基于 CAIDCP 认证课程材料 | &copy; 2025 国际云安全联盟大中华区</p>
+    </footer>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const scenariosData = [
+        {
+            id: 'sql_injection',
+            title: 'SQL注入防护',
+            icon: '🛡️',
+            description: '演示如何通过精确提示词，从源头上杜绝最经典、危害最大的SQL注入漏洞。',
+            tabs: [
+                { 
+                    name: '不安全演示',
+                    content: `
+                        <h4 class="font-bold text-rose-600 mb-2">“错误”的提示 (Vague Prompt)</h4>
+                        <div class="code-block" data-code="请用Python写一个函数，根据用户ID从数据库里查找用户的信息。">
+                            <button class="copy-btn">复制</button>
+                            <pre><code>请用Python写一个函数，根据用户ID从数据库里查找用户的信息。</code></pre>
+                        </div>
+                        <p class="mt-4 p-4 bg-rose-100 border-l-4 border-rose-500 text-rose-700 rounded-r-lg">
+                            <strong>点评:</strong> 这是一个典型的模糊指令，极易诱导AI生成使用字符串拼接SQL语句的不安全代码，从而引入SQL注入漏洞。
+                        </p>
+                    `
+                },
+                {
+                    name: '安全演示 (PDD)',
+                    content: `
+                        <h4 class="font-bold text-emerald-600 mb-2">“AI驱动的、符合规范”的精确提示 (Secure PDD Prompt)</h4>
+                        <div class="code-block" data-code="请基于Python和\`psycopg2\`库，编写一个安全的函数，用于根据用户\`id\`从PostgreSQL数据库的\`users\`表中查询用户信息。\n\n**核心要求**:\n严格遵循《GB/T 38674》中关于“数据操作安全”和“命令构建验证”的规范，**必须使用参数化查询（prepared statements）** 来防止SQL注入攻击。\n\n**函数规格**:\n- 函数名: \`get_user_by_id\`\n- 输入参数: \`user_id\` (整数类型)\n- 返回值: 成功时返回用户信息（如字典），失败或未找到则返回\`None\`。\n- 请包含完整的数据库连接、执行查询和关闭连接的逻辑。">
+                            <button class="copy-btn">复制</button>
+                            <pre><code>请基于Python和\`psycopg2\`库，编写一个安全的函数，用于根据用户\`id\`从PostgreSQL数据库的\`users\`表中查询用户信息。
+
+**核心要求**:
+严格遵循《GB/T 38674》中关于“数据操作安全”和“命令构建验证”的规范，**必须使用参数化查询（prepared statements）** 来防止SQL注入攻击。
+
+**函数规格**:
+- 函数名: \`get_user_by_id\`
+- 输入参数: \`user_id\` (整数类型)
+- 返回值: 成功时返回用户信息（如字典），失败或未找到则返回\`None\`。
+- 请包含完整的数据库连接、执行查询和关闭连接的逻辑。</code></pre>
+                        </div>
+                    `
+                }
+            ]
+        },
+        {
+            id: 'hardcoded_secrets',
+            title: '硬编码密钥防护',
+            icon: '🔑',
+            description: '教学员识别和修复代码中的“硬编码密钥”这一严重的安全隐患，并理解AI在其中的双重角色。',
+            tabs: [
+                {
+                    name: 'AI安全导师',
+                    content: `
+                        <h4 class="font-bold text-sky-600 mb-2">知识问答 (Knowledge Q&A)</h4>
+                        <div class="code-block" data-code="我是一名Java开发者。请根据《GB/T 38674》中关于“密钥安全维护”和“禁止硬编码密钥”的要求，用一个表格对比分析，在代码中硬编码加密密钥的风险，并提供一个使用环境变量来安全加载密钥的规范示例。">
+                            <button class="copy-btn">复制</button>
+                            <pre><code>我是一名Java开发者。请根据《GB/T 38674》中关于“密钥安全维护”和“禁止硬编码密钥”的要求，用一个表格对比分析，在代码中硬编码加密密钥的风险，并提供一个使用环境变量来安全加载密钥的规范示例。</code></pre>
+                        </div>
+                    `
+                },
+                {
+                    name: 'AI代码审计',
+                    content: `
+                        <h4 class="font-bold text-sky-600 mb-2">审计提示 (Audit Prompt)</h4>
+                        <p class="mb-2 text-slate-600">提供以下不安全代码片段给AI进行审计：</p>
+                        <div class="code-block mb-4" data-code='public class UnsafeEncryption {\n    // 风险点：密钥被硬编码在代码中\n    private static final String SECRET_KEY = "mySuperSecretKey123!@#";\n\n    public String encrypt(String data) throws Exception {\n        SecretKeySpec secretKey = new SecretKeySpec(SECRET_KEY.getBytes(), "AES");\n        Cipher cipher = Cipher.getInstance("AES");\n        cipher.init(Cipher.ENCRYPT_MODE, secretKey);\n        byte[] encryptedBytes = cipher.doFinal(data.getBytes());\n        return Base64.getEncoder().encodeToString(encryptedBytes);\n    }\n}'>
+                            <button class="copy-btn">复制</button>
+                            <pre><code>public class UnsafeEncryption {
+    // 风险点：密钥被硬编码在代码中
+    private static final String SECRET_KEY = "mySuperSecretKey123!@#";
+
+    public String encrypt(String data) throws Exception {
+        SecretKeySpec secretKey = new SecretKeySpec(SECRET_KEY.getBytes(), "AES");
+        Cipher cipher = Cipher.getInstance("AES");
+        cipher.init(Cipher.ENCRYPT_MODE, secretKey);
+        byte[] encryptedBytes = cipher.doFinal(data.getBytes());
+        return Base64.getEncoder().encodeToString(encryptedBytes);
+    }
+}</code></pre>
+                        </div>
+                        <div class="code-block" data-code="你是一名代码审计专家。请审计以上Java代码片段。\n\n**任务**:\n1. 根据《GB/T 38674》的要求“密钥需通过安全渠道（如环境变量、 KMS）动态获取，禁止在代码或配置文件中明文存储”，判断它是否存在“硬编码密钥”的安全漏洞。\n2. 如果存在，请详细说明其风险。\n3. 提供一份详细的、可操作的修复建议，展示如何从环境变量或安全配置文件中加载密钥，以替代硬编码。">
+                            <button class="copy-btn">复制</button>
+                            <pre><code>你是一名代码审计专家。请审计以上Java代码片段。
+
+**任务**:
+1. 根据《GB/T 38674》的要求“密钥需通过安全渠道（如环境变量、 KMS）动态获取，禁止在代码或配置文件中明文存储”，判断它是否存在“硬编码密钥”的安全漏洞。
+2. 如果存在，请详细说明其风险。
+3. 提供一份详细的、可操作的修复建议，展示如何从环境变量或安全配置文件中加载密钥，以替代硬编码。</code></pre>
+                        </div>
+                    `
+                }
+            ]
+        },
+        {
+            id: 'idor_protection',
+            title: '不安全直接对象引用(IDOR)防护',
+            icon: '👤',
+            description: '演示在设计API时，如何通过提示词强制AI实现业务逻辑层面的权限校验，防止用户越权访问。',
+            tabs: [
+                {
+                    name: '不安全演示',
+                    content: `
+                        <h4 class="font-bold text-rose-600 mb-2">“错误”的提示 (Vague Prompt)</h4>
+                        <div class="code-block" data-code="请用Java Spring Boot框架写一个API，可以通过订单ID查询订单详情。">
+                            <button class="copy-btn">复制</button>
+                            <pre><code>请用Java Spring Boot框架写一个API，可以通过订单ID查询订单详情。</code></pre>
+                        </div>
+                        <p class="mt-4 p-4 bg-rose-100 border-l-4 border-rose-500 text-rose-700 rounded-r-lg">
+                            <strong>点评:</strong> 这个提示只描述了功能，完全没有提及权限控制。AI生成的代码很可能只根据ID查询，导致任何认证用户都可以查询任意订单，造成严重的越权漏洞。
+                        </p>
+                    `
+                },
+                {
+                    name: '安全演示 (PDD)',
+                    content: `
+                        <h4 class="font-bold text-emerald-600 mb-2">“AI驱动的、符合规范”的精确提示 (Secure PDD Prompt)</h4>
+                        <div class="code-block" data-code="请使用Java Spring Boot框架，设计一个安全的REST API端点 \`/api/orders/{orderId}\` 来获取订单详情。\n\n**核心安全要求**:\n严格遵循《GB/T 38674》中关于“权限管理”和“数据操作检查”的规范，在执行数据库查询前，**必须强制校验当前已认证的用户是否有权查看该\`orderId\`对应的订单**。\n\n**实现逻辑**:\n1. 从安全上下文（Security Context）中获取当前登录用户的ID。\n2. 在查询订单时，SQL查询条件必须同时包含\`orderId\`和\`userId\`。\n3. 如果订单不存在或不属于当前用户，应返回404 Not Found或403 Forbidden。\n4. 请展示Controller层和Service层的关键代码实现。">
+                            <button class="copy-btn">复制</button>
+                            <pre><code>请使用Java Spring Boot框架，设计一个安全的REST API端点 \`/api/orders/{orderId}\` 来获取订单详情。
+
+**核心安全要求**:
+严格遵循《GB/T 38674》中关于“权限管理”和“数据操作检查”的规范，在执行数据库查询前，**必须强制校验当前已认证的用户是否有权查看该\`orderId\`对应的订单**。
+
+**实现逻辑**:
+1. 从安全上下文（Security Context）中获取当前登录用户的ID。
+2. 在查询订单时，SQL查询条件必须同时包含\`orderId\`和\`userId\`。
+3. 如果订单不存在或不属于当前用户，应返回404 Not Found或403 Forbidden。
+4. 请展示Controller层和Service层的关键代码实现。</code></pre>
+                        </div>
+                    `
+                }
+            ]
+        },
+        {
+            id: 'deadlock_prevention',
+            title: '并发程序安全 - 死锁预防',
+            icon: '🔄',
+            description: '展示AI在处理复杂编程概念（如多线程和并发）时的能力，既可以作为导师解释概念，也可以作为开发者实现线程安全的逻辑。',
+            tabs: [
+                 {
+                    name: 'AI安全导师',
+                    content: `
+                        <h4 class="font-bold text-sky-600 mb-2">概念解释与代码演示 (Concept & Demo)</h4>
+                        <div class="code-block" data-code="请根据《GB/T 38674》“并发程序安全”章节，用Java代码生动地演示一个由于“锁顺序不一致”而导致两个线程发生“死锁”的经典场景。\n\n**要求**:\n1. 创建两个线程和两个共享锁对象。\n2. 让每个线程以相反的顺序去获取这两个锁，从而触发死锁。\n3. 在代码中用注释清晰地标示出死锁发生的原因。\n4. 最后，请简要说明如何通过遵循“锁顺序一致性”原则来修复这个死锁问题。">
+                            <button class="copy-btn">复制</button>
+                            <pre><code>请根据《GB/T 38674》“并发程序安全”章节，用Java代码生动地演示一个由于“锁顺序不一致”而导致两个线程发生“死锁”的经典场景。
+
+**要求**:
+1. 创建两个线程和两个共享锁对象。
+2. 让每个线程以相反的顺序去获取这两个锁，从而触发死锁。
+3. 在代码中用注释清晰地标示出死锁发生的原因。
+4. 最后，请简要说明如何通过遵循“锁顺序一致性”原则来修复这个死锁问题。</code></pre>
+                        </div>
+                    `
+                }
+            ]
+        },
+        {
+            id: 'log_injection',
+            title: '日志注入与敏感信息泄露防护',
+            icon: '📜',
+            description: '演示如何防止攻击者伪造日志内容，以及如何避免在日志中记录密码等敏感信息。',
+            tabs: [
+                {
+                    name: '不安全演示',
+                    content: `
+                        <h4 class="font-bold text-rose-600 mb-2">“错误”的提示 (Vague Prompt)</h4>
+                        <div class="code-block" data-code="我需要记录用户登录的用户名和密码，方便排查问题。请用\`Log4j2\`写一下。">
+                            <button class="copy-btn">复制</button>
+                            <pre><code>我需要记录用户登录的用户名和密码，方便排查问题。请用\`Log4j2\`写一下。</code></pre>
+                        </div>
+                        <p class="mt-4 p-4 bg-rose-100 border-l-4 border-rose-500 text-rose-700 rounded-r-lg">
+                            <strong>点评:</strong> 这是一个极其危险的请求。它不仅会导致在日志中明文记录密码，还可能因为直接拼接用户输入而产生日志注入风险。
+                        </p>
+                    `
+                },
+                {
+                    name: '安全演示 (PDD)',
+                    content: `
+                        <h4 class="font-bold text-emerald-600 mb-2">“AI驱动的、符合规范”的精确提示 (Secure PDD Prompt)</h4>
+                        <div class="code-block" data-code="请使用Java和\`Log4j2\`，编写一个安全的用户登录日志记录函数。\n\n**核心安全要求**:\n严格遵循《GB/T 38674》“日志安全”规范，确保：\n1. **避免敏感数据泄露**: **绝对禁止**在日志中记录用户密码或任何其他敏感凭证。\n2. **输入过滤与转义**: 对所有写入日志的用户输入（如用户名）进行处理，过滤掉CR/LF字符（如\`\\r\`, \`\\n\`），以防止日志伪造或日志注入攻击。\n3. **记录关键事件**: 应记录登录尝试的结果（成功/失败）以及来源IP地址。\n\n**函数规格**:\n- 输入参数: \`username\` (String), \`ipAddress\` (String), \`isSuccess\` (boolean)\n- 日志级别: 成功登录使用\`INFO\`级别，失败登录使用\`WARN\`级别。\n- 请展示具体的实现代码。">
+                            <button class="copy-btn">复制</button>
+                            <pre><code>请使用Java和\`Log4j2\`，编写一个安全的用户登录日志记录函数。
+
+**核心安全要求**:
+严格遵循《GB/T 38674》“日志安全”规范，确保：
+1. **避免敏感数据泄露**: **绝对禁止**在日志中记录用户密码或任何其他敏感凭证。
+2. **输入过滤与转义**: 对所有写入日志的用户输入（如用户名）进行处理，过滤掉CR/LF字符（如\`\\r\`, \`\\n\`），以防止日志伪造或日志注入攻击。
+3. **记录关键事件**: 应记录登录尝试的结果（成功/失败）以及来源IP地址。
+
+**函数规格**:
+- 输入参数: \`username\` (String), \`ipAddress\` (String), \`isSuccess\` (boolean)
+- 日志级别: 成功登录使用\`INFO\`级别，失败登录使用\`WARN\`级别。
+- 请展示具体的实现代码。</code></pre>
+                        </div>
+                    `
+                }
+            ]
+        },
+        {
+            id: 'OOP_Security',
+            title: '代码实现安全-面向对象程序安全',
+            icon: '🔄',
+            description: '这个场景是AI导师为我们解释难以理解的编程规范，帮助我们理解如何遵循规范进行安全实践。',
+            tabs: [
+                 {
+                    name: 'AI安全导师',
+                    content: `
+                        <h4 class="font-bold text-sky-600 mb-2">提示词演示 (Concept & Demo)</h4>
+                        <div class="code-block" data-code="我不理解什么是‘防御性复制’，在Java中它为什么重要？请根据《GB/T 38674》数据封装与访问控制之
+防御性复制的要求：返回可变对象的副本，防止外部修改内部状态，给我一个具体的代码示例。">
+                            <button class="copy-btn">复制</button>
+                            <pre><code>我不理解什么是‘防御性复制’，在Java中它为什么重要？请根据《GB/T 38674》数据封装与访问控制之
+防御性复制的要求：返回可变对象的副本，防止外部修改内部状态，给我一个具体的代码示例。</code></pre>
+                        </div>
+                    `
+                }
+            ]
+        },
+        {
+            id: 'exception_handling',
+            title: '安全异常处理 - 敏感信息屏蔽',
+            icon: '💥',
+            description: '理解不当的异常处理会如何暴露系统内部的技术细节，为攻击者提供可利用的情报。',
+            tabs: [
+                {
+                    name: 'AI代码审计',
+                    content: `
+                        <h4 class="font-bold text-sky-600 mb-2">审计提示 (Audit Prompt)</h4>
+                        <p class="mb-2 text-slate-600">提供以下不安全代码片段给AI进行审计：</p>
+                        <div class="code-block mb-4" data-code='from flask import Flask, request\n\napp = Flask(__name__)\n\n@app.route("/user")\ndef get_user_profile():\n    user_id = request.args.get("id")\n    try:\n        if user_id == "error":\n             raise Exception("数据库连接失败: \\'user\\'@\\'localhost\\' 密码错误")\n        return f"成功获取用户 {user_id} 的信息"\n    except Exception as e:\n        # 风险点：直接将详细的异常信息返回给用户\n        return f"处理请求时发生错误: {str(e)}", 500'>
+                            <button class="copy-btn">复制</button>
+                            <pre><code>from flask import Flask, request
+
+app = Flask(__name__)
+
+@app.route("/user")
+def get_user_profile():
+    user_id = request.args.get("id")
+    try:
+        # 假设这里有一个函数，会连接数据库并可能抛出异常
+        if user_id == "error":
+             raise Exception("数据库连接失败: 'user'@'localhost' 密码错误")
+        return f"成功获取用户 {user_id} 的信息"
+    except Exception as e:
+        # 风险点：直接将详细的异常信息返回给用户
+        return f"处理请求时发生错误: {str(e)}", 500</code></pre>
+                        </div>
+                        <div class="code-block" data-code="你是一名代码审计专家。请审计以上Python Flask代码片段。\n\n**任务**:\n1. 根据《GB/T 38674》中关于“异常处理安全”和“隐藏敏感信息”的要求，判断它是否存在向用户泄露过多内部错误细节的安全风险。\n2. 如果存在，请详细说明这种信息泄露可能带来的危害。\n3. 提供一份详细的修复建议，展示如何实现一个安全的异常处理机制：既能在服务端记录完整的错误日志用于调试，又只向用户返回一个通用的、不包含敏感信息的错误提示。">
+                            <button class="copy-btn">复制</button>
+                            <pre><code>你是一名代码审计专家。请审计以上Python Flask代码片段。
+
+**任务**:
+1. 根据《GB/T 38674》中关于“异常处理安全”和“隐藏敏感信息”的要求，判断它是否存在向用户泄露过多内部错误细节的安全风险。
+2. 如果存在，请详细说明这种信息泄露可能带来的危害。
+3. 提供一份详细的修复建议，展示如何实现一个安全的异常处理机制：既能在服务端记录完整的错误日志用于调试，又只向用户返回一个通用的、不包含敏感信息的错误提示。</code></pre>
+                        </div>
+                    `
+                }
+            ]
+        },
+        {
+            id: 'file_upload',
+            title: '资源使用安全 - 文件管理',
+            icon: '📁',
+            description: '演示如何通过精确的提示词，构建一个安全的文件上传功能，防范路径遍历、恶意文件执行等风险。',
+            tabs: [
+                 {
+                    name: '不安全演示',
+                    content: `
+                        <h4 class="font-bold text-rose-600 mb-2">“错误”的提示 (Vague Prompt)</h4>
+                        <div class="code-block" data-code="请用Python写一个文件上传功能。">
+                            <button class="copy-btn">复制</button>
+                            <pre><code>请用Python写一个文件上传功能。</code></pre>
+                        </div>
+                        <p class="mt-4 p-4 bg-rose-100 border-l-4 border-rose-500 text-rose-700 rounded-r-lg">
+                            <strong>点评:</strong> 这种模糊的提示很可能导致AI生成不安全的代码，比如未验证文件类型、存在路径遍历风险等。
+                        </p>
+                    `
+                },
+                {
+                    name: '安全演示 (PDD)',
+                    content: `
+                        <h4 class="font-bold text-emerald-600 mb-2">“AI驱动的、符合规范”的精确提示 (Secure PDD Prompt)</h4>
+                        <div class="code-block" data-code="请基于Python Flask框架，编写一个安全的文件上传函数。\n\n**要求**\n严格遵循《GB/T 38674》文件管理安全要求，包括但不限于以下几点：\n- 文件路径验证：对上传的文件名进行清理，防止路径遍历攻击（如'../'）。\n- 文件类型验证：不仅检查文件扩展名，还要读取文件头（Magic Number）来确认文件类型，仅允许上传'.png'和'.jpg'格式的图片。\n- 临时文件管理：使用安全的临时文件存储，并确保操作后清理。\n- 权限控制：确保上传目录不可执行。\n- 请将所有的依赖项写入requirements.txt。">
+                            <button class="copy-btn">复制</button>
+                            <pre><code>请基于Python Flask框架，编写一个安全的文件上传函数。
+
+**要求**
+严格遵循《GB/T 38674》文件管理安全要求，包括但不限于以下几点：
+- 文件路径验证：对上传的文件名进行清理，防止路径遍历攻击（如'../'）。
+- 文件类型验证：不仅检查文件扩展名，还要读取文件头（Magic Number）来确认文件类型，仅允许上传'.png'和'.jpg'格式的图片。
+- 临时文件管理：使用安全的临时文件存储，并确保操作后清理。
+- 权限控制：确保上传目录不可执行。
+- 请将所有的依赖项写入requirements.txt。</code></pre>
+                        </div>
+                    `
+                },
+                {
+                    name: 'AI代码审计',
+                    content: `
+                        <h4 class="font-bold text-sky-600 mb-2">代码审计与迭代 (Code Audit & Iteration)</h4>
+                        <p class="mb-4 text-slate-600">在AI生成初版安全代码后，可以进一步指令AI扮演审计专家，进行更深入的审查和迭代优化，形成一个完整的开发-审计-优化的闭环。</p>
+                        <div class="code-block" data-code="你是一名资深信息安全专家和代码审计顾问，具备丰富的漏洞识别与修复经验，熟悉包括 Web 安全、系统安全、加密实现、内存安全等多个领域。请对\`./secure_file_upload_demo/\`目录下的代码进行深入分析，任务如下：\n...\n请一次性完成全部的审计工作，并以markdown格式生成“安全审计报告.md”文件">
+                            <button class="copy-btn">复制</button>
+                            <pre><code>你是一名资深信息安全专家和代码审计顾问，具备丰富的漏洞识别与修复经验，熟悉包括 Web 安全、系统安全、加密实现、内存安全等多个领域。请对\`./secure_file_upload_demo/\`目录下的代码进行深入分析...
+(详细审计需求见源文档)
+...请一次性完成全部的审计工作，并以markdown格式生成“安全审计报告.md”文件</code></pre>
+                        </div>
+                         <div class="code-block mt-4" data-code="我们已经根据安全审计报告进行了项目改进，请按照前述审计需求，对项目重新审计，并生成新的审计报告\`安全审计报告(复审).md\`。">
+                            <button class="copy-btn">复制</button>
+                            <pre><code>我们已经根据安全审计报告进行了项目改进，请按照前述审计需求，对项目重新审计，并生成新的审计报告\`安全审计报告(复审).md\`。</code></pre>
+                        </div>
+                    `
+                }
+            ]
+        }
+    ];
+
+    const grid = document.getElementById('scenario-grid');
+    const modal = document.getElementById('modal');
+    const modalContent = document.getElementById('modal-content');
+    const modalTitle = document.getElementById('modal-title');
+    const modalBody = document.getElementById('modal-body');
+    const modalClose = document.getElementById('modal-close');
+
+    function initialize() {
+        populateScenarioGrid();
+        setupEventListeners();
+    }
+
+    function populateScenarioGrid() {
+        grid.innerHTML = '';
+        scenariosData.forEach(scenario => {
+            const card = document.createElement('div');
+            card.className = 'scenario-card bg-white rounded-lg p-6 cursor-pointer shadow-md';
+            card.dataset.scenarioId = scenario.id;
+            card.innerHTML = `
+                <div class="text-4xl mb-4">${scenario.icon}</div>
+                <h3 class="text-xl font-bold mb-2 text-slate-800">${scenario.title}</h3>
+                <p class="text-slate-600">${scenario.description}</p>
+            `;
+            grid.appendChild(card);
+        });
+    }
+
+    function openModal(scenario) {
+        modalTitle.textContent = `${scenario.icon} ${scenario.title}`;
+        
+        let tabsHTML = '<nav id="modal-tabs" class="flex space-x-2" aria-label="Tabs">';
+        scenario.tabs.forEach((tab, index) => {
+            tabsHTML += `<button class="py-2 px-4 text-sm font-medium border-b-2 transition-colors duration-300 ${index === 0 ? 'tab-active' : 'tab-inactive'}" data-tab-name="${tab.name}">${tab.name}</button>`;
+        });
+        tabsHTML += '</nav>';
+
+        let tabContentHTML = '<div id="modal-tab-content">';
+        scenario.tabs.forEach((tab, index) => {
+            tabContentHTML += `<div data-tab-content="${tab.name}" class="${index === 0 ? '' : 'hidden'}">${tab.content}</div>`;
+        });
+        tabContentHTML += '</div>';
+
+        modalBody.innerHTML = `
+            <p class="text-slate-600 mb-6">${scenario.description}</p>
+            <div class="border-b border-slate-200 mb-4">${tabsHTML}</div>
+            ${tabContentHTML}
+        `;
+
+        modal.classList.remove('hidden');
+        setTimeout(() => {
+            modal.classList.add('opacity-100');
+            modalContent.classList.remove('scale-95');
+        }, 10);
+    }
+
+    function closeModal() {
+        modal.classList.remove('opacity-100');
+        modalContent.classList.add('scale-95');
+        setTimeout(() => {
+            modal.classList.add('hidden');
+            modalBody.innerHTML = '';
+        }, 300);
+    }
+
+    function setupEventListeners() {
+        grid.addEventListener('click', (e) => {
+            const card = e.target.closest('.scenario-card');
+            if (card) {
+                const scenarioId = card.dataset.scenarioId;
+                const scenario = scenariosData.find(s => s.id === scenarioId);
+                if (scenario) {
+                    openModal(scenario);
+                }
+            }
+        });
+
+        modalClose.addEventListener('click', closeModal);
+        
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                closeModal();
+            }
+        });
+
+        modalBody.addEventListener('click', (e) => {
+            // Tab switching
+            if (e.target.matches('#modal-tabs button')) {
+                const tabName = e.target.dataset.tabName;
+                
+                modalBody.querySelectorAll('#modal-tabs button').forEach(btn => {
+                    btn.classList.remove('tab-active');
+                    btn.classList.add('tab-inactive');
+                });
+                e.target.classList.add('tab-active');
+                e.target.classList.remove('tab-inactive');
+                
+                modalBody.querySelectorAll('#modal-tab-content > div').forEach(content => {
+                    content.classList.toggle('hidden', content.dataset.tabContent !== tabName);
+                });
+            }
+
+            // Copy button
+            if (e.target.matches('.copy-btn')) {
+                const btn = e.target;
+                const codeBlock = btn.closest('.code-block');
+                const codeToCopy = codeBlock.dataset.code || codeBlock.querySelector('pre code').innerText;
+                
+                navigator.clipboard.writeText(codeToCopy).then(() => {
+                    btn.textContent = '已复制!';
+                    setTimeout(() => { btn.textContent = '复制'; }, 2000);
+                }).catch(err => {
+                    console.error('Failed to copy text: ', err);
+                    btn.textContent = '失败';
+                });
+            }
+        });
+    }
+
+    initialize();
+});
+</script>
+
+</body>
+</html>

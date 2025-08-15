@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>交互式产品评价系统模拟器</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Chosen Palette: Serene Teal & Stone -->
+    <!-- Application Structure Plan: The SPA is designed as a role-based interactive simulator, not a data dashboard. This structure is optimal because the source document outlines processes and rules, not static data. The layout is a two-column design: the left side simulates the "Buyer Experience" (submitting/filtering reviews), and the right side simulates the "Admin Panel" (managing reviews). Above this, a dynamic "Data Overview" section with stats and a chart provides real-time analytical feedback. This task-oriented structure allows users (PMs, devs, QA) to directly test and understand the cause-and-effect of each user story in a unified, intuitive environment, making the requirements tangible. -->
+    <!-- Visualization & Content Choices: 1) User Stories (Goal: Inform): Presented in an HTML <details> accordion to keep reference material accessible but tidy. 2) Review Data (Goal: Compare/Inform): A dynamic doughnut chart (Chart.js) visualizes the star rating distribution, and key metric cards (HTML/CSS) show total, public, and hidden counts. This provides an at-a-glance analytical summary. 3) Core Logic (Goal: Interact/Organize): The main simulation uses interactive HTML forms, buttons for filtering, and dynamically rendered lists to represent the review lifecycle. This allows users to actively engage with and test the rules from every user story (viewing, creating, filtering, hiding) in a controlled sandbox. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8; /* Light blue-gray background */
+            color: #334155; /* Slate 700 */
+        }
+        .card {
+            background-color: #ffffff;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.07), 0 2px 4px -2px rgb(0 0 0 / 0.07);
+            transition: all 0.3s ease-in-out;
+        }
+        .btn {
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            transition: all 0.2s ease-in-out;
+            cursor: pointer;
+            border: 1px solid transparent;
+        }
+        .btn-primary {
+            background-color: #0d9488; /* Teal 600 */
+            color: white;
+        }
+        .btn-primary:hover {
+            background-color: #0f766e; /* Teal 700 */
+        }
+        .btn-secondary {
+            background-color: #e2e8f0; /* Slate 200 */
+            color: #475569; /* Slate 600 */
+        }
+        .btn-secondary:hover {
+            background-color: #cbd5e1; /* Slate 300 */
+        }
+        .btn-filter.active {
+            background-color: #0d9488;
+            color: white;
+            border-color: #0f766e;
+        }
+        .star-rating input[type="radio"] { display: none; }
+        .star-rating label {
+            font-size: 2rem;
+            color: #cbd5e1; /* Slate 300 */
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+        .star-rating input[type="radio"]:checked ~ label,
+        .star-rating label:hover,
+        .star-rating label:hover ~ label {
+            color: #f59e0b; /* Amber 500 */
+        }
+        .star-rating { display: flex; flex-direction: row-reverse; justify-content: flex-end; }
+        .summary-level-1 {
+            padding: 1rem 1.5rem;
+            font-size: 1.125rem; /* text-lg */
+            color: #1e293b; /* slate-800 */
+            border-radius: 0.5rem;
+        }
+        .summary-level-1:hover {
+            background-color: #f1f5f9; /* slate-100 */
+        }
+        .content-level-1 {
+            padding: 0 1.5rem 1rem 3rem;
+            border-left: 2px solid #e2e8f0; /* slate-200 */
+            margin-left: calc(1.5rem - 1px);
+        }
+        .summary-level-2 {
+            padding: 0.75rem 1rem;
+            font-size: 1rem;
+            color: #334155; /* slate-700 */
+            background-color: #f8fafc; /* slate-50 */
+            border-radius: 0.5rem;
+        }
+        .summary-level-2:hover {
+            background-color: #f1f5f9; /* slate-100 */
+        }
+        .content-level-2 {
+            padding: 1rem 1rem 1rem 2.25rem;
+            background-color: #f8fafc; /* slate-50 */
+            border-left: 2px solid #e2e8f0; /* slate-200 */
+            margin-left: calc(1rem - 1px);
+            border-bottom-left-radius: 0.5rem;
+            border-bottom-right-radius: 0.5rem;
+        }
+        details > summary {
+            cursor: pointer;
+            font-weight: 600;
+            padding: 0.5rem;
+            border-radius: 0.5rem;
+        }
+        details > summary:hover {
+            background-color: #f1f5f9; /* Slate 100 */
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 300px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 300px;
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <div class="container mx-auto p-4 sm:p-6 lg:p-8 max-w-7xl">
+        <header class="text-center mb-10">
+            <h1 class="text-3xl md:text-4xl font-bold text-slate-800">产品评价系统交互式模拟器</h1>
+            <p class="mt-2 text-lg text-slate-600">一个用于可视化和测试产品需求规格的动态工具。</p>
+        </header>
+
+        <main class="space-y-8">
+            <!-- Section 1: Data Overview -->
+            <section id="data-overview" class="card p-6">
+                <h2 class="text-2xl font-bold text-slate-800 mb-4">数据总览</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
+                    <div class="md:col-span-2 grid grid-cols-2 sm:grid-cols-3 gap-4 text-center">
+                        <div class="p-4 bg-slate-50 rounded-lg">
+                            <p class="text-sm text-slate-500">评价总数</p>
+                            <p id="total-reviews" class="text-3xl font-bold text-teal-600">0</p>
+                        </div>
+                        <div class="p-4 bg-slate-50 rounded-lg">
+                            <p class="text-sm text-slate-500">公开评价</p>
+                            <p id="public-reviews-count" class="text-3xl font-bold text-slate-800">0</p>
+                        </div>
+                        <div class="p-4 bg-slate-50 rounded-lg">
+                            <p class="text-sm text-slate-500">已隐藏</p>
+                            <p id="hidden-reviews-count" class="text-3xl font-bold text-slate-800">0</p>
+                        </div>
+                    </div>
+                    <div class="md:col-span-1">
+                        <div class="chart-container">
+                            <canvas id="ratings-chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Section 2: Simulator -->
+            <section id="simulator" class="grid lg:grid-cols-2 gap-8">
+                <!-- Buyer's View -->
+                <div class="card p-6 space-y-6">
+                    <h2 class="text-2xl font-bold text-slate-800">买家体验区</h2>
+                    <div>
+                        <h3 class="text-lg font-semibold text-slate-700 mb-2">发表评价 (用户故事 2)</h3>
+                        <form id="review-form" class="space-y-4">
+                            <div class="star-rating">
+                                <input type="radio" id="star5" name="rating" value="5" required><label for="star5" title="5 stars">★</label>
+                                <input type="radio" id="star4" name="rating" value="4"><label for="star4" title="4 stars">★</label>
+                                <input type="radio" id="star3" name="rating" value="3"><label for="star3" title="3 stars">★</label>
+                                <input type="radio" id="star2" name="rating" value="2"><label for="star2" title="2 stars">★</label>
+                                <input type="radio" id="star1" name="rating" value="1"><label for="star1" title="1 star">★</label>
+                            </div>
+                            <textarea id="review-content" class="w-full p-3 border border-slate-300 rounded-lg h-28 focus:ring-2 focus:ring-teal-500 focus:border-teal-500" placeholder="请输入评价内容 (最多500字)..."></textarea>
+                            <button type="submit" class="btn btn-primary w-full">提交评价</button>
+                        </form>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-semibold text-slate-700 mb-2">查看评价 (用户故事 1 & 3)</h3>
+                         <div id="filter-buttons" class="flex flex-wrap gap-2 mb-4">
+                            <button class="btn btn-secondary btn-filter active" data-rating="all">全部</button>
+                            <button class="btn btn-secondary btn-filter" data-rating="5">5 ★</button>
+                            <button class="btn btn-secondary btn-filter" data-rating="4">4 ★</button>
+                            <button class="btn btn-secondary btn-filter" data-rating="3">3 ★</button>
+                            <button class="btn btn-secondary btn-filter" data-rating="2">2 ★</button>
+                            <button class="btn btn-secondary btn-filter" data-rating="1">1 ★</button>
+                        </div>
+                        <div id="public-reviews-list" class="space-y-3 p-4 bg-slate-50 rounded-lg min-h-[200px] max-h-[400px] overflow-y-auto">
+                            <p class="text-slate-500 italic">暂无评价，期待您的分享！</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Admin's View -->
+                <div class="card p-6 space-y-6">
+                    <h2 class="text-2xl font-bold text-slate-800">管理员面板</h2>
+                    <div>
+                        <h3 class="text-lg font-semibold text-slate-700 mb-2">评价管理 (用户故事 4)</h3>
+                        <div id="admin-reviews-list" class="space-y-3 p-4 bg-slate-50 rounded-lg min-h-[200px] max-h-[600px] overflow-y-auto">
+                           <p class="text-slate-500 italic">当前没有评价。</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Section 3: Requirements Reference -->
+            <section id="requirements" class="card p-4 sm:p-6">
+                <h2 class="text-2xl font-bold text-slate-800 mb-4">需求规格参考</h2>
+                <div class="space-y-2">
+                    <!-- 用户故事 1 -->
+            <details>
+                <summary class="summary-level-1">用户故事 1: 查看所有评价</summary>
+                <div class="content-level-1 space-y-4 pt-4">
+                    <p><strong>用户故事:</strong> 作为买家，我想看到所有评价，以便我能全面了解其他用户对商品的看法。</p>
+                    <p><strong>核心需求:</strong> 系统必须为买家提供一个界面，以查看某个商品所有未被隐藏的评价。</p>
+                    <div class="space-y-2">
+                        <h4 class="font-semibold text-slate-800">验收条件:</h4>
+                        <details>
+                            <summary class="summary-level-2">AC1: 成功加载评价列表</summary>
+                            <div class="content-level-2 space-y-2 text-slate-600">
+                                <p><strong>当</strong> 买家进入一个商品详情页时，</p>
+                                <p><strong>系统应</strong> 在页面的指定区域加载并展示所有**公开状态**的商品评价。</p>
+                            </div>
+                        </details>
+                        <details>
+                            <summary class="summary-level-2">AC2: 评价的默认排序</summary>
+                            <div class="content-level-2 space-y-2 text-slate-600">
+                                <p><strong>当</strong> 评价列表被加载时，</p>
+                                <p><strong>系统应</strong> 默认将所有评价按照“最新发布”的时间倒序排列。</p>
+                            </div>
+                        </details>
+                        <details>
+                            <summary class="summary-level-2">AC3: 处理无评价的情况</summary>
+                            <div class="content-level-2 space-y-2 text-slate-600">
+                                <p><strong>当</strong> 买家访问的商品没有任何评价时，</p>
+                                <p><strong>系统应</strong> 在评价区域显示一条明确的提示信息，例如“暂无评价，期待您的分享！”。</p>
+                            </div>
+                        </details>
+                        <details>
+                            <summary class="summary-level-2">AC4: 分页或懒加载机制</summary>
+                            <div class="content-level-2 space-y-2 text-slate-600">
+                                <p><strong>如果</strong> 一个商品的评价总数超过单页显示上限（例如：10条），</p>
+                                <p><strong>当</strong> 买家滚动到评价列表底部或点击“加载更多”按钮时，</p>
+                                <p><strong>系统应</strong> 加载并显示下一页的评价内容。</p>
+                            </div>
+                        </details>
+                        <details>
+                            <summary class="summary-level-2">AC5: 过滤已隐藏的评价</summary>
+                            <div class="content-level-2 space-y-2 text-slate-600">
+                                <p><strong>当</strong> 系统为买家准备评价列表时，</p>
+                                <p><strong>系统应</strong> 自动过滤掉所有被管理员标记为“已隐藏”的评价，确保这些评价对买家端完全不可见。</p>
+                            </div>
+                        </details>
+                    </div>
+                </div>
+            </details>
+
+            <!-- 用户故事 2 -->
+            <details>
+                <summary class="summary-level-1">用户故事 2: 留下星级和文字评价</summary>
+                <div class="content-level-1 space-y-4 pt-4">
+                    <p><strong>用户故事:</strong> 作为买家，我想留下星级和文字评价，以便我能分享我的购物体验。</p>
+                    <p><strong>核心需求:</strong> 系统必须允许已完成购买的买家，为对应的商品提交一个包含星级（1-5星）和文字内容的评价。</p>
+                    <div class="space-y-2">
+                        <h4 class="font-semibold text-slate-800">验收条件:</h4>
+                        <details>
+                            <summary class="summary-level-2">AC1: 成功提交评价</summary>
+                            <div class="content-level-2 space-y-2 text-slate-600">
+                                <p><strong>当</strong> 一位已购买该商品的买家在评价表单中选择了星级、输入了文字内容，并点击“提交”按钮时，</p>
+                                <p><strong>系统应</strong> 成功保存该评价，并向用户显示“评价提交成功”的确认信息。</p>
+                            </div>
+                        </details>
+                        <details>
+                            <summary class="summary-level-2">AC2: 评价资格验证</summary>
+                            <div class="content-level-2 space-y-2 text-slate-600">
+                                <p><strong>对于</strong> 未登录用户或登录后未购买过该商品的用户，</p>
+                                <p><strong>当</strong> 他们访问该商品详情页时，</p>
+                                <p><strong>系统应</strong> 隐藏或禁用“发表评价”的功能入口。</p>
+                            </div>
+                        </details>
+                        <details>
+                            <summary class="summary-level-2">AC3: 星级评分为必填项</summary>
+                            <div class="content-level-2 space-y-2 text-slate-600">
+                                <p><strong>当</strong> 买家在提交评价时没有选择星级，</p>
+                                <p><strong>系统应</strong> 阻止提交，并显示明确的错误提示，如“请为商品打分”。</p>
+                            </div>
+                        </details>
+                        <details>
+                            <summary class="summary-level-2">AC4: 文字内容长度校验</summary>
+                            <div class="content-level-2 space-y-2 text-slate-600">
+                                <p><strong>当</strong> 买家输入的文字内容超出了系统设定的最大长度（例如：500字符）时，</p>
+                                <p><strong>系统应</strong> 阻止提交，并显示相应的错误提示，如“评价内容不能超过500个字符”。</p>
+                            </div>
+                        </details>
+                    </div>
+                </div>
+            </details>
+
+            <!-- 用户故事 3 -->
+            <details>
+                <summary class="summary-level-1">用户故事 3: 按评分筛选</summary>
+                <div class="content-level-1 space-y-4 pt-4">
+                    <p><strong>用户故事:</strong> 作为买家，我想按评分筛选，以便我能快速找到我最关心的评价（比如只看好评或只看差评）。</p>
+                    <p><strong>核心需求:</strong> 系统必须提供按星级（例如：全部、5星、4星等）筛选商品评价列表的功能。</p>
+                    <div class="space-y-2">
+                        <h4 class="font-semibold text-slate-800">验收条件:</h4>
+                        <details>
+                            <summary class="summary-level-2">AC1: 成功应用筛选</summary>
+                            <div class="content-level-2 space-y-2 text-slate-600">
+                                <p><strong>当</strong> 买家在评价区点击了某个星级筛选选项（例如“5星”）时，</p>
+                                <p><strong>系统应</strong> 立即刷新评价列表，仅显示符合该星级条件的评价，并高亮当前生效的筛选选项。</p>
+                            </div>
+                        </details>
+                        <details>
+                            <summary class="summary-level-2">AC2: 清除筛选条件</summary>
+                            <div class="content-level-2 space-y-2 text-slate-600">
+                                <p><strong>当</strong> 买家点击“全部评价”选项时，</p>
+                                <p><strong>系统应</strong> 清除当前的星级筛选，并重新显示该商品的所有公开评价。</p>
+                            </div>
+                        </details>
+                        <details>
+                            <summary class="summary-level-2">AC3: 处理无结果的筛选</summary>
+                            <div class="content-level-2 space-y-2 text-slate-600">
+                                <p><strong>当</strong> 买家选择的筛选条件（例如“1星”）没有任何匹配的评价时，</p>
+                                <p><strong>系统应</strong> 在评价列表区域显示明确的提示信息，如“暂无符合条件的评价”。</p>
+                            </div>
+                        </details>
+                        <details>
+                            <summary class="summary-level-2">AC4: 筛选后保留分页</summary>
+                            <div class="content-level-2 space-y-2 text-slate-600">
+                                <p><strong>当</strong> 用户应用了一个筛选条件后，</p>
+                                <p><strong>系统应</strong> 确保分页或懒加载功能在筛选后的结果集上依然有效。</p>
+                            </div>
+                        </details>
+                    </div>
+                </div>
+            </details>
+
+            <!-- 用户故事 4 -->
+            <details>
+                <summary class="summary-level-1">用户故事 4: 隐藏不当评价</summary>
+                <div class="content-level-1 space-y-4 pt-4">
+                    <p><strong>用户故事:</strong> 作为管理员，我想隐藏不当评价，以便维护一个健康、真实的社区环境。</p>
+                    <p><strong>核心需求:</strong> 系统必须为管理员提供一个后台功能，可以隐藏特定评价，使其在前台对买家不可见，但数据仍在后台保留。</p>
+                    <div class="space-y-2">
+                        <h4 class="font-semibold text-slate-800">验收条件:</h4>
+                        <details>
+                            <summary class="summary-level-2">AC1: 成功隐藏评价</summary>
+                            <div class="content-level-2 space-y-2 text-slate-600">
+                                <p><strong>当</strong> 管理员在后台管理界面中找到一条评价并点击“隐藏”按钮时，</p>
+                                <p><strong>系统应</strong> 将该评价的状态更新为“已隐藏”，并向管理员显示“操作成功”的反馈信息。</p>
+                            </div>
+                        </details>
+                        <details>
+                            <summary class="summary-level-2">AC2: 验证隐藏效果</summary>
+                            <div class="content-level-2 space-y-2 text-slate-600">
+                                <p><strong>当</strong> 一条评价的状态被更新为“已隐藏”后，</p>
+                                <p><strong>系统应</strong> 确保该评价不会再出现在任何买家端的前台评价列表中。</p>
+                            </div>
+                        </details>
+                        <details>
+                            <summary class="summary-level-2">AC3: 恢复显示评价</summary>
+                            <div class="content-level-2 space-y-2 text-slate-600">
+                                <p><strong>当</strong> 管理员点击一条“已隐藏”评价的“恢复显示”按钮时，</p>
+                                <p><strong>系统应</strong> 将该评价的状态改回“公开”，并使其能够再次被前端的买家正常查看。</p>
+                            </div>
+                        </details>
+                        <details>
+                            <summary class="summary-level-2">AC4: 记录操作日志</summary>
+                            <div class="content-level-2 space-y-2 text-slate-600">
+                                <p><strong>当</strong> 管理员执行“隐藏”或“恢复显示”操作时，</p>
+                                <p><strong>系统应</strong> 在后台日志中记录下操作人、操作时间、被操作的评价ID等关键信息，以备审计。</p>
+                            </div>
+                        </details>
+                    </div>
+                </div>
+            </details>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- STATE ---
+            let reviews = [];
+            let nextReviewId = 0;
+            let currentFilter = 'all';
+            let ratingsChart;
+
+            // --- DOM ELEMENTS ---
+            const reviewForm = document.getElementById('review-form');
+            const reviewContentInput = document.getElementById('review-content');
+            const publicReviewsList = document.getElementById('public-reviews-list');
+            const adminReviewsList = document.getElementById('admin-reviews-list');
+            const filterButtonsContainer = document.getElementById('filter-buttons');
+            
+            // Stats
+            const totalReviewsEl = document.getElementById('total-reviews');
+            const publicReviewsCountEl = document.getElementById('public-reviews-count');
+            const hiddenReviewsCountEl = document.getElementById('hidden-reviews-count');
+
+            // --- RENDER FUNCTIONS ---
+            const renderAll = () => {
+                renderPublicReviews();
+                renderAdminReviews();
+                updateStats();
+                updateChart();
+            };
+
+            const renderPublicReviews = () => {
+                publicReviewsList.innerHTML = '';
+                const publicReviews = reviews.filter(r => r.status === 'public');
+                const filteredReviews = currentFilter === 'all'
+                    ? publicReviews
+                    : publicReviews.filter(r => r.rating === parseInt(currentFilter));
+
+                if (filteredReviews.length === 0) {
+                    const message = publicReviews.length === 0 ? '暂无评价，期待您的分享！' : '暂无符合条件的评价。';
+                    publicReviewsList.innerHTML = `<p class="text-slate-500 italic p-4 text-center">${message}</p>`;
+                    return;
+                }
+
+                filteredReviews.sort((a, b) => b.id - a.id).forEach(review => {
+                    const reviewEl = document.createElement('div');
+                    reviewEl.className = 'p-4 bg-white border border-slate-200 rounded-lg';
+                    const stars = '★'.repeat(review.rating) + '☆'.repeat(5 - review.rating);
+                    reviewEl.innerHTML = `
+                        <div class="flex justify-between items-center">
+                            <p class="text-amber-500 text-lg">${stars}</p>
+                            <span class="text-xs text-slate-400">ID: ${review.id}</span>
+                        </div>
+                        <p class="mt-2 text-slate-700">${review.content}</p>
+                    `;
+                    publicReviewsList.appendChild(reviewEl);
+                });
+            };
+
+            const renderAdminReviews = () => {
+                adminReviewsList.innerHTML = '';
+                if (reviews.length === 0) {
+                    adminReviewsList.innerHTML = `<p class="text-slate-500 italic p-4 text-center">当前没有评价。</p>`;
+                    return;
+                }
+
+                reviews.sort((a, b) => b.id - a.id).forEach(review => {
+                    const reviewEl = document.createElement('div');
+                    const isHidden = review.status === 'hidden';
+                    reviewEl.className = `p-4 border rounded-lg ${isHidden ? 'bg-red-50 border-red-200 opacity-60' : 'bg-white border-slate-200'}`;
+                    const stars = '★'.repeat(review.rating) + '☆'.repeat(5 - review.rating);
+                    const actionButton = isHidden
+                        ? `<button class="btn btn-secondary text-xs" data-id="${review.id}" data-action="unhide">恢复</button>`
+                        : `<button class="btn btn-secondary text-xs" data-id="${review.id}" data-action="hide">隐藏</button>`;
+                    
+                    reviewEl.innerHTML = `
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="text-amber-500 text-lg">${stars}</p>
+                                <p class="mt-2 text-slate-700">${review.content}</p>
+                            </div>
+                            <div class="flex flex-col items-end gap-2">
+                                <span class="text-xs text-slate-400">ID: ${review.id}</span>
+                                ${actionButton}
+                            </div>
+                        </div>
+                    `;
+                    adminReviewsList.appendChild(reviewEl);
+                });
+            };
+
+            const updateStats = () => {
+                const publicCount = reviews.filter(r => r.status === 'public').length;
+                const hiddenCount = reviews.filter(r => r.status === 'hidden').length;
+                totalReviewsEl.textContent = reviews.length;
+                publicReviewsCountEl.textContent = publicCount;
+                hiddenReviewsCountEl.textContent = hiddenCount;
+            };
+            
+            const initializeChart = () => {
+                const ctx = document.getElementById('ratings-chart').getContext('2d');
+                ratingsChart = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['5 ★', '4 ★', '3 ★', '2 ★', '1 ★'],
+                        datasets: [{
+                            label: '评价分布',
+                            data: [0, 0, 0, 0, 0],
+                            backgroundColor: ['#10b981', '#6366f1', '#3b82f6', '#f59e0b', '#ef4444'],
+                            borderColor: '#ffffff',
+                            borderWidth: 2
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'right',
+                                labels: {
+                                    boxWidth: 12,
+                                    font: { size: 12 }
+                                }
+                            }
+                        }
+                    }
+                });
+            };
+
+            const updateChart = () => {
+                const ratingCounts = [0, 0, 0, 0, 0]; // 1-5 stars
+                reviews.filter(r => r.status === 'public').forEach(r => {
+                    ratingCounts[r.rating - 1]++;
+                });
+                ratingsChart.data.datasets[0].data = ratingCounts.reverse(); // Chart.js labels are reversed
+                ratingsChart.update();
+            };
+
+            // --- EVENT HANDLERS ---
+            reviewForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const formData = new FormData(reviewForm);
+                const rating = formData.get('rating');
+                const content = reviewContentInput.value.trim();
+
+                if (!rating) {
+                    alert('请为商品打分');
+                    return;
+                }
+                if (content.length > 500) {
+                    alert('评价内容不能超过500个字符');
+                    return;
+                }
+                if(!content){
+                    alert('请输入评价内容');
+                    return;
+                }
+
+                const newReview = {
+                    id: nextReviewId++,
+                    rating: parseInt(rating),
+                    content: content || '用户未填写文字评价。',
+                    status: 'public'
+                };
+                reviews.push(newReview);
+                
+                reviewForm.reset();
+                renderAll();
+            });
+
+            filterButtonsContainer.addEventListener('click', (e) => {
+                if (e.target.tagName !== 'BUTTON') return;
+                
+                currentFilter = e.target.dataset.rating;
+
+                document.querySelectorAll('.btn-filter').forEach(btn => btn.classList.remove('active'));
+                e.target.classList.add('active');
+
+                renderPublicReviews();
+            });
+
+            adminReviewsList.addEventListener('click', (e) => {
+                if (e.target.tagName !== 'BUTTON') return;
+                
+                const id = parseInt(e.target.dataset.id);
+                const action = e.target.dataset.action;
+                const review = reviews.find(r => r.id === id);
+
+                if (review) {
+                    if (action === 'hide') review.status = 'hidden';
+                    if (action === 'unhide') review.status = 'public';
+                    renderAll();
+                }
+            });
+
+            // --- INITIALIZATION ---
+            initializeChart();
+            renderAll();
+        });
+    </script>
+</body>
+</html>
