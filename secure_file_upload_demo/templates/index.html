@@ -1,7 +1,8 @@
 <!doctype html>
 <title>Secure File Upload</title>
-<h1>Upload a new File</h1>
+<h1>Upload a File</h1>
 <form method=post enctype=multipart/form-data>
+  {{ csrf_token() }}
   <input type=file name=file>
   <input type=submit value=Upload>
 </form>
@@ -9,7 +10,7 @@
   {% if messages %}
     <ul class=flashes>
     {% for message in messages %}
-      <li>{{ message }}</li>
+      <li>{{ message | escape }}</li>
     {% endfor %}
     </ul>
   {% endif %}
