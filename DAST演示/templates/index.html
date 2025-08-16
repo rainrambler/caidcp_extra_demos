@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>DAST 演示 - XSS 漏洞靶场</title>
+    <style>
+        body { font-family: sans-serif; margin: 2em; background-color: #f4f4f9; color: #333; }
+        .container { max-width: 700px; margin: auto; padding: 2em; background-color: #fff; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        h1 { color: #0056b3; }
+        p { line-height: 1.6; }
+        code { background-color: #eee; padding: 2px 4px; border-radius: 4px; }
+        input[type="text"] { width: 80%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
+        input[type="submit"] { padding: 8px 15px; border: none; background-color: #0056b3; color: white; border-radius: 4px; cursor: pointer; }
+        input[type="submit"]:hover { background-color: #004494; }
+        .result { margin-top: 1.5em; padding: 1em; border: 1px solid #eee; background-color: #f9f9f9; border-radius: 4px; min-height: 50px; word-wrap: break-word; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>XSS 漏洞靶场</h1>
+        <p>这个页面有一个XSS漏洞，但它会对<code>&lt;script&gt;</code>标签进行简单过滤。</p>
+        <p>请尝试输入攻击载荷，测试其防御能力。</p>
+        <form method="post" action="/">
+            <input type="text" name="user_input" size="50" placeholder="例如: <script>alert(1)</script>">
+            <input type="submit" value="提交">
+        </form>
+        {% if user_input %}
+        <div class="result">
+            <strong>您输入的内容显示如下:</strong>
+            <hr>
+            {{ user_input | safe }}
+        </div>
+        {% endif %}
+    </div>
+</body>
+</html>

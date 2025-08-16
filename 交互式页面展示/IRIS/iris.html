@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>论文学习: IRIS - LLM辅助的静态安全分析</title>
+    <style>
+        /* --- Basic Styles --- */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 900px;
+            margin: 20px auto;
+            padding: 0 20px;
+            background-color: #f9fafb;
+        }
+        /* --- Layout & Containers --- */
+        .container {
+            background: #fff;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 6px 12px rgba(0,0,0,0.08);
+        }
+        header {
+            text-align: center;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+        /* --- Typography --- */
+        h1 {
+            color: #007bff;
+            font-size: 2.2em;
+        }
+        h2 {
+            color: #17a2b8;
+            border-bottom: 1px solid #e0e0e0;
+            padding-bottom: 10px;
+            margin-top: 40px;
+        }
+        h3 {
+            color: #28a745;
+            margin-top: 30px;
+        }
+        .paper-meta {
+            font-style: italic;
+            color: #6c757d;
+        }
+        /* --- Special Sections --- */
+        .summary-box {
+            background-color: #eefbff;
+            border-left: 5px solid #17a2b8;
+            padding: 20px;
+            margin: 25px 0;
+            border-radius: 5px;
+        }
+        .summary-box h3 {
+            margin-top: 0;
+            color: #17a2b8;
+        }
+        .highlight {
+            background-color: #fff3cd;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-weight: bold;
+        }
+        /* --- Figures & Tables --- */
+        .figure-container {
+            margin: 25px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            text-align: center;
+            background-color: #fdfdfd;
+        }
+        .figure-container img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 4px;
+        }
+        .figure-container figcaption {
+            margin-top: 15px;
+            font-style: italic;
+            color: #555;
+            font-size: 0.9em;
+        }
+        .table-container {
+            margin: 25px 0;
+            overflow-x: auto;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+        th, td {
+            padding: 12px 15px;
+            border: 1px solid #ddd;
+        }
+        th {
+            background-color: #007bff;
+            color: white;
+        }
+        tbody tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+        /* --- Interactivity --- */
+        .interactive-toggle {
+            cursor: pointer;
+            color: #007bff;
+            font-weight: bold;
+            display: inline-block;
+            margin-top: 10px;
+            padding: 5px;
+            border-radius: 4px;
+            transition: background-color 0.2s;
+        }
+        .interactive-toggle:hover {
+            background-color: #eefbff;
+        }
+        .details {
+            display: none;
+            padding-left: 20px;
+            border-left: 3px solid #17a2b8;
+            margin-top: 10px;
+            background-color: #f9f9f9;
+            padding: 15px;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Main container for the entire page -->
+    <div class="container">
+        
+        <!-- Page Header -->
+        <header>
+            <h1>交互式学习页面：论文精读</h1>
+            <p class="paper-meta"><strong>论文标题:</strong> IRIS: LLM-ASSISTED STATIC ANALYSIS FOR DETECTING SECURITY VULNERABILITIES</p>
+            <p class="paper-meta"><strong>arXiv ID:</strong> 2405.17238</p>
+        </header>
+
+        <!-- NEW: Summary Box for quick takeaways -->
+        <div class="summary-box">
+            <h3>核心摘要</h3>
+            <p><strong>IRIS 框架</strong>通过让大语言模型（LLM）与传统静态分析工具（SAST）协同工作，旨在解决SAST工具<strong>高误报</strong>和<strong>高漏报</strong>的核心痛点。其创新的两阶段方法，不仅能有效过滤误报，还能主动挖掘被遗漏的深层漏洞，并在真实项目中发现了多个0-day漏洞。</p>
+        </div>
+
+        <!-- Section 1: Learning Points -->
+        <section id="learning-points">
+            <h2>学习要点</h2>
+
+            <h3>1. 核心问题：传统静态分析(SAST)的局限性</h3>
+            <p>传统的静态应用安全测试（SAST）工具在自动化扫描代码时，普遍存在两大痛点：</p>
+            <ul>
+                <li><strong style="color: #dc3545;">高误报率 (High False Positives):</strong> 报告大量并非真实存在的漏洞，浪费开发者和安全工程师的宝贵时间。</li>
+                <li><strong style="color: #ffc107;">高漏报率 (High False Negatives):</strong> 难以发现需要深刻理解代码上下文和复杂逻辑的漏洞。</li>
+            </ul>
+
+            <h3>2. 核心思路：LLM扮演“虚拟安全专家”</h3>
+            <p>IRIS的核心思想是利用LLM强大的代码理解和推理能力，与传统SAST工具协同工作。LLM的角色就像一位经验丰富的安全专家，帮助完成两项关键任务：<span class="highlight">筛选误报</span> 和 <span class="highlight">挖掘漏报</span>。</p>
+
+            <h3>3. 方法论：IRIS框架的设计</h3>
+            <p>IRIS的<strong>两阶段工作流</strong>是其核心设计，而其<strong>底层能力</strong>则依赖于一个由LLM驱动的深度污点分析引擎。下面的图示（论文中的Figure 2）揭示了其内部的分析机制：</p>
+            
+            <div class="figure-container">
+                <img src="./figure2.png" alt="IRIS Taint Tracking Mechanism">
+                <figcaption><strong>图 1: IRIS 污点分析与推理机制 (论文 Figure 2)</strong><br>这张图展示了IRIS的<strong>核心分析引擎</strong>如何工作。它通过构建代码的抽象语法树(AST)和数据流图(DFG)，并让LLM在这些结构上进行推理来跟踪污点数据。这正是它能够进行深度分析的基础，无论是用于过滤误报（阶段一）还是挖掘漏报（阶段二）。</figcaption>
+            </div>
+
+            <p><strong>IRIS框架的两阶段工作流：</strong></p>
+            <ol>
+                <li><strong>漏洞模式定义：</strong> 为漏洞定义结构化的模式 (Source, Sink, Sanitizer)。</li>
+                <li><strong>辅助函数识别：</strong> 利用LLM识别代码库中与数据处理相关的关键函数。</li>
+                <li><strong>两阶段分析过程：</strong>
+                    <ul>
+                        <li><strong>阶段一 (误报过滤):</strong> 对SAST工具的告警，利用上述分析引擎判断其真实性。</li>
+                        <li><strong>阶段二 (漏报挖掘):</strong> 利用已识别的辅助函数和漏洞模式，主动让分析引擎探索新的、可能被忽略的数据流路径。</li>
+                    </ul>
+                </li>
+            </ol>
+            <span class="interactive-toggle" onclick="toggleDetails('details1')">点击查看 Prompt 设计细节 ▼</span>
+            <div class="details" id="details1">
+                <p>IRIS的Prompt设计非常考究，它不仅仅是简单地把代码丢给LLM。Prompt中包含了：</p>
+                <ul>
+                    <li><strong>任务描述：</strong> 明确告诉LLM需要做什么（例如，“判断这是否是一个真实的SQL注入漏洞”）。</li>
+                    <li><strong>漏洞模式定义：</strong> 给出目标漏洞的Source, Sink, Sanitizer的定义。</li>
+                    <li><strong>代码上下文：</strong> 提供与数据流相关的完整代码片段。</li>
+                    <li><strong>SAST工具的告警信息：</strong> 作为LLM分析的起点。</li>
+                </ul>
+                <p>这种结构化的Prompt设计是确保LLM能给出准确、可靠分析结果的关键。</p>
+            </div>
+
+
+            <h3>4. 主要实验发现</h3>
+            <p>论文通过在多个真实开源项目上的实验，验证了IRIS的有效性。关键结果可以从下面的表格中看到。</p>
+
+            <div class="table-container">
+                <figcaption style="text-align:center; margin-bottom:10px;"><strong>表 1: IRIS在不同项目上的漏洞检测结果 (论文 Table 1 & 2 精华)</strong></figcaption>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>项目名称</th>
+                            <th>SAST原始告警数</th>
+                            <th>IRIS确认的真实漏洞 (过滤后)</th>
+                            <th>误报过滤率</th>
+                            <th>IRIS发现的新漏洞 (0-day)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Joplin</td>
+                            <td>42</td>
+                            <td>4</td>
+                            <td style="color: #28a745; font-weight: bold;">90.5%</td>
+                            <td style="color: #dc3545; font-weight: bold;">1 (CVE)</td>
+                        </tr>
+                        <tr>
+                            <td>K9-Mail</td>
+                            <td>24</td>
+                            <td>1</td>
+                            <td style="color: #28a745; font-weight: bold;">95.8%</td>
+                            <td style="color: #28a745; font-weight: bold;">2 (CVE)</td>
+                        </tr>
+                        <tr>
+                            <td>Nextcloud</td>
+                            <td>55</td>
+                            <td>10</td>
+                            <td style="color: #28a745; font-weight: bold;">81.8%</td>
+                            <td style="color: #28a745; font-weight: bold;">1 (CVE)</td>
+                        </tr>
+                         <tr>
+                            <td>OpenRefine</td>
+                            <td>31</td>
+                            <td>11</td>
+                            <td style="color: #28a745; font-weight: bold;">64.5%</td>
+                            <td style="color: #28a745; font-weight: bold;">1 (CVE)</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <p>从表格中我们可以清晰地看到：</p>
+            <ul>
+                <li>IRIS的<span class="highlight">误报过滤率极高</span>，普遍在80%-95%之间，极大地减轻了人工审计的负担。</li>
+                <li>更令人印象深刻的是，IRIS成功发现了多个被传统SAST工具<span class="highlight">完全遗漏的真实0-day漏洞</span>，并获得了CVE编号。</li>
+            </ul>
+        </section>
+
+        <!-- Section 2: Innovations -->
+        <section id="innovations">
+            <h2>主要创新</h2>
+            <ol>
+                <li>
+                    <strong>人机协同的新范式 (LLM-Assisted)</strong>
+                    <p>最大的创新是提出了一个“LLM增强静态分析”的全新范式。它不寻求替代传统工具，而是将SAST工具的广度与LLM的深度分析能力完美结合，实现了 1+1 > 2 的效果。</p>
+                </li>
+                <li>
+                    <strong>结构化的分析流程</strong>
+                    <p>通过定义漏洞模式、识别辅助函数、构建结构化Prompt，将复杂的安全审计任务分解为LLM可以更好处理的子任务，保证了分析的可靠性和稳定性。</p>
+                </li>
+                <li>
+                    <strong>双重任务导向 (过滤+挖掘)</strong>
+                    <p>框架设计非常全面，既能通过“向后看”来高效过滤误报，又能通过“向前看”来主动挖掘漏报，同时解决了静态分析的两个核心痛点。</p>
+                </li>
+                <li>
+                    <strong>真实世界的有效性验证</strong>
+                    <p>论文的结论不是建立在合成数据集上，而是通过在多个大型、真实开源项目中的实验，发现了有影响力的真实0-day漏洞，这强有力地证明了方法的实际应用价值。</p>
+                </li>
+            </ol>
+        </section>
+
+    </div>
+
+    <!-- JavaScript for the interactive toggle -->
+    <script>
+        function toggleDetails(id) {
+            var element = document.getElementById(id);
+            var toggle = event.target;
+            if (element.style.display === "none" || element.style.display === "") {
+                element.style.display = "block";
+                toggle.textContent = toggle.textContent.replace('▼', '▲');
+            } else {
+                element.style.display = "none";
+                toggle.textContent = toggle.textContent.replace('▲', '▼');
+            }
+        }
+    </script>
+
+</body>
+</html>

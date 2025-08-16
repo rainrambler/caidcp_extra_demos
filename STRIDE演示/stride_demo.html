@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>STRIDE 威胁建模演示</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 1200px; /* Increased max-width for wider table */
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f8f9fa;
+        }
+        h1, h2 {
+            color: #0056b3;
+            border-bottom: 2px solid #0056b3;
+            padding-bottom: 10px;
+        }
+        .section {
+            background-color: #ffffff;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        code {
+            background-color: #e9ecef;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: "Courier New", Courier, monospace;
+            display: block;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #dee2e6;
+            padding: 12px;
+            text-align: left;
+            vertical-align: top; /* Align content to the top */
+        }
+        th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+        tr:nth-child(even) {
+            background-color: #f8f8f8;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>STRIDE 威胁建模演示</h1>
+
+    <div class="section">
+        <h2>1. 目标系统描述</h2>
+        <p>一个多因素认证（MFA）服务系统。</p>
+    </div>
+
+    <div class="section">
+        <h2>2. 输入AI模型的PROMPT</h2>
+        <code>你是一名安全架构师。请对`01. AI驱动安全开发\03. DeepSeek安全审计_MFA`目录中描述的多因素认证服务系统，使用STRIDE威胁建模方法进行分析。请识别出每个类别（Spoofing, Tampering, Repudiation, Information Disclosure, Denial of Service, Elevation of Privilege）下至少一个具体的威胁，并以表格形式呈现。</code>
+    </div>
+
+    <div class="section">
+        <h2>3. AI生成的威胁分析结果</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>威胁类型</th>
+                    <th>具体威胁</th>
+                    <th>威胁描述</th>
+                    <th>可能的影响</th>
+                    <th>建议的缓解措施</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Spoofing (伪装)</strong></td>
+                    <td>会话劫持</td>
+                    <td>攻击者可能通过获取access_token来冒充合法用户</td>
+                    <td>未经授权访问用户账户</td>
+                    <td>1. 缩短token有效期<br>2. 在token中加入设备指纹<br>3. 实现token revocation机制</td>
+                </tr>
+                <tr>
+                    <td><strong>Tampering (篡改)</strong></td>
+                    <td>MFA验证码篡改</td>
+                    <td>在`verify-code`接口中，验证码比对使用等值比较(==)而非安全比较</td>
+                    <td>可能导致时序攻击，破解验证码</td>
+                    <td>1. 使用constant-time比较<br>2. 实现验证尝试次数限制</td>
+                </tr>
+                <tr>
+                    <td><strong>Repudiation (抵赖)</strong></td>
+                    <td>敏感操作日志不完整</td>
+                    <td>禁用MFA等敏感操作的日志记录不够详细</td>
+                    <td>无法完整追溯安全事件</td>
+                    <td>1. 增加操作来源IP、设备信息等上下文<br>2. 确保所有敏感操作都有日志记录</td>
+                </tr>
+                <tr>
+                    <td><strong>Information Disclosure (信息泄露)</strong></td>
+                    <td>错误信息过于详细</td>
+                    <td>注册时直接返回"用户名已存在"等详细错误信息</td>
+                    <td>便于攻击者枚举有效用户名</td>
+                    <td>1. 使用模糊的错误信息<br>2. 统一错误提示格式</td>
+                </tr>
+                <tr>
+                    <td><strong>Denial of Service (拒绝服务)</strong></td>
+                    <td>MFA验证码轰炸</td>
+                    <td>`send-code`接口的频率限制可被绕过</td>
+                    <td>大量发送验证码导致系统负载过大</td>
+                    <td>1. 加强速率限制<br>2. 引入验证码机制<br>3. 实现IP级别限制</td>
+                </tr>
+                <tr>
+                    <td><strong>Elevation of Privilege (提权)</strong></td>
+                    <td>MFA绕过</td>
+                    <td>在verify-mfa接口中，对backup code验证不够严格</td>
+                    <td>可能绕过MFA二次验证</td>
+                    <td>1. 增加backup code的复杂度要求<br>2. 限制backup code的使用次数和有效期</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+</body>
+</html>

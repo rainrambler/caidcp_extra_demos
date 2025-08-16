@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>论文学习: FuzzGPT - LLM作为边缘案例生成器</title>
+    <style>
+        /* --- 基础样式 --- */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            line-height: 1.7;
+            color: #343a40;
+            max-width: 900px;
+            margin: 20px auto;
+            padding: 0 20px;
+            background-color: #f8f9fa;
+        }
+        /* --- 布局与容器 --- */
+        .container {
+            background: #fff;
+            padding: 35px;
+            border-radius: 12px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.07);
+        }
+        header {
+            text-align: center;
+            border-bottom: 2px solid #28a745;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+        /* --- 字体排版 --- */
+        h1 {
+            color: #28a745;
+            font-size: 2.3em;
+            font-weight: 700;
+        }
+        h2 {
+            color: #198754;
+            border-bottom: 1px solid #e9ecef;
+            padding-bottom: 10px;
+            margin-top: 45px;
+        }
+        h3 {
+            color: #0d6efd;
+            margin-top: 30px;
+        }
+        .paper-meta {
+            font-style: italic;
+            color: #6c757d;
+        }
+        /* --- 特殊区域 --- */
+        .summary-box {
+            background-color: #e6f9f0;
+            border-left: 5px solid #20c997;
+            padding: 20px;
+            margin: 25px 0;
+            border-radius: 5px;
+        }
+        .summary-box h3 {
+            margin-top: 0;
+            color: #198754;
+        }
+        .highlight {
+            background-color: #d1e7dd;
+            padding: 3px 7px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        /* --- 图表与代码 --- */
+        .figure-container {
+            margin: 25px 0;
+            padding: 20px;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            text-align: center;
+            background-color: #fdfdfd;
+        }
+        .figure-container img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 4px;
+        }
+        .figure-container figcaption {
+            margin-top: 15px;
+            font-style: italic;
+            color: #555;
+            font-size: 0.9em;
+        }
+        pre {
+            background-color: #212529;
+            color: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-family: 'Courier New', Courier, monospace;
+        }
+        code {
+            color: #d63384;
+            font-family: 'Courier New', Courier, monospace;
+        }
+        pre code {
+            color: inherit;
+        }
+        /* --- 交互元素 --- */
+        .interactive-toggle {
+            cursor: pointer;
+            color: #0d6efd;
+            font-weight: bold;
+            display: inline-block;
+            margin-top: 10px;
+            padding: 5px;
+            border-radius: 4px;
+            transition: background-color 0.2s;
+        }
+        .interactive-toggle:hover {
+            background-color: #e7f1ff;
+        }
+        .details {
+            display: none;
+            padding-left: 20px;
+            border-left: 3px solid #0d6efd;
+            margin-top: 10px;
+            background-color: #f9f9f9;
+            padding: 15px;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        
+        <header>
+            <h1>交互式学习页面：论文精读</h1>
+            <p class="paper-meta"><strong>论文标题:</strong> Large Language Models are Edge-Case Generators: Crafting Unusual Programs for Fuzzing Deep Learning Libraries</p>
+            <p class="paper-meta"><strong>简称:</strong> FuzzGPT</p>
+        </header>
+
+        <div class="summary-box">
+            <h3>核心思想：从“有效”到“不寻常”的进化</h3>
+            <p>FuzzGPT 是对 TitanFuzz 思想的重大升级。TitanFuzz 证明了LLM能生成<strong>有效</strong>的测试代码，但这些代码往往是“普通”的。FuzzGPT 的核心目标是引导LLM生成<strong>不寻常的 (unusual)、能触发边缘情况的</strong>测试代码，因为这才是Fuzzing发现深层漏洞的关键。</p>
+        </div>
+
+        <section id="learning-points">
+            <h2>学习要点</h2>
+
+            <h3>1. 核心问题：普通测试用例的局限性</h3>
+            <p>直接使用预训练LLM生成的代码（如TitanFuzz）往往会模仿其训练数据中的常见模式。然而，许多顽固的Bug隐藏在不常见的API用法或边缘的输入组合中。Fuzzing的威力恰恰体现在探索这些“不寻常”的路径上。</p>
+            
+            <h3>2. 核心思路：利用历史Bug“投喂”LLM</h3>
+            <p>FuzzGPT的解决方案非常巧妙：<strong>让LLM从过去已知的Bug中学习，从而学会如何创造新的Bug。</strong> 它基于一个经典假设：历史上触发Bug的代码包含了发现新Bug的宝贵“基因”（例如，特殊的数据类型、不寻常的参数组合等）。</p>
+
+            <h3>3. 方法论：FuzzGPT框架</h3>
+            <div class="figure-container">
+                <img src="./figure2.png" alt="FuzzGPT 框架概览">
+                <figcaption><strong>图 1: FuzzGPT 框架概览 (论文 Figure 2)</strong><br>该图展示了FuzzGPT的完整工作流：从代码仓库中挖掘历史Bug报告，构建“不寻常”代码数据集。然后，通过<strong>In-context Learning</strong>或<strong>Fine-tuning</strong>引导LLM学习这些模式，生成新的边缘案例测试用例，最后送入测试环境进行验证。</figcaption>
+            </div>
+        </section>
+
+        <!-- NEW SECTION: Minimal Example -->
+        <section id="how-it-works">
+            <h2>工作原理：一个最小化的示例</h2>
+            <p>一个核心问题是：FuzzGPT生成的“坏”代码是如何用来测试的？关键在于理解：FuzzGPT生成的代码是<strong>测试用例 (Test Case)</strong>，其测试目标是它所调用的<strong>底层库 (Library)</strong>。</p>
+            <p>让我们通过一个假设的 <code>SafeMath</code> 库来理解这个过程。</p>
+
+            <h3>第一步：被测试的目标库</h3>
+            <p>假设我们有一个 <code>SafeMath</code> 库，其中包含一个计算倒数的函数。开发者可能没有考虑到所有边缘情况。</p>
+            <pre><code># SafeMath 库的内部代码 (被测试的对象)
+def safe_inverse(x):
+  if x == 0:
+    raise ValueError("Cannot compute inverse of zero.")
+  # 开发者可能忽略了极小浮点数会导致溢出的问题
+  return 1.0 / x</code></pre>
+
+            <h3>第二步：FuzzGPT学习历史Bug的“基因”</h3>
+            <p>FuzzGPT在其数据集中学到了一个模式：<span class="highlight">“使用非常接近于零的极小浮点数作为除数，可能触发边缘Bug”</span>。</p>
+
+            <h3>第三步：FuzzGPT生成“坏”代码（测试用例）</h3>
+            <p>现在，我们让FuzzGPT为 <code>safe_inverse</code> 函数生成测试用例。它不会生成普通用例（如 <code>safe_inverse(10)</code>），而是会利用学到的“基因”生成一个不寻常的用例：</p>
+            <pre><code># FuzzGPT 生成的“坏”代码 (它本身是测试用例)
+import SafeMath
+
+# 使用了从历史Bug中学到的“极小浮点数”模式
+test_value = 1e-308 # 一个非常接近于零的数
+
+print(f"Testing with unusual value: {test_value}")
+
+# 调用我们想要测试的库函数
+result = SafeMath.safe_inverse(test_value)
+print(result)</code></pre>
+
+            <h3>第四步：执行测试用例，发现库的Bug</h3>
+            <p>当我们执行上面由FuzzGPT生成的代码时，<code>SafeMath.safe_inverse(test_value)</code> 会尝试计算 <code>1.0 / 1e-308</code>。这个结果会超出标准浮点数的表示范围，从而导致程序因<strong>浮点数溢出 (FloatingPointError)</strong> 而<strong>崩溃 (Crash)</strong>。</p>
+            <p>这个崩溃清晰地证明了我们的 <code>SafeMath</code> 库存在一个Bug：它的 <code>safe_inverse</code> 函数没有正确处理极小浮点数输入。通过这种方式，FuzzGPT成功地利用生成的“坏”代码，发现了底层库的隐藏缺陷。</p>
+
+            <!-- NEW SUB-SECTION BASED ON YOUR REQUEST -->
+            <h3>总结：“坏”代码如何发现Bug</h3>
+            <p>基于以上示例，我们可以将FuzzGPT的工作机理总结为以下四点：</p>
+            <ul>
+                <li><strong>语法正确性：</strong>FuzzGPT生成的测试用例在语法上是完全正确的Python代码。</li>
+                <li><strong>语义的“坏”：</strong>其“坏”体现在语义层面——它以非典型、极端、且借鉴了历史Bug模式的方式调用库函数，专门探测API的薄弱环节。</li>
+                <li><strong>测试即执行：</strong>测试过程就是直接执行这段由FuzzGPT生成的代码。</li>
+                <li><strong>Bug的显现：</strong>如果被测试的库在处理这种极端调用时发生崩溃、返回错误结果或挂起，这就标志着一个潜在的Bug被成功发现。</li>
+            </ul>
+        </section>
+
+        <section id="innovations">
+            <h2>主要创新与启示</h2>
+            <ol>
+                <li>
+                    <strong>开创“边缘案例生成”新方向</strong>
+                    <p>首次展示了如何主动引导LLM从生成“普通”代码转向生成“不寻常”的边缘案例代码，极大地提升了Fuzzing的效率和深度。</p>
+                </li>
+                <li>
+                    <strong>实现全自动化的“历史驱动Fuzzing”</strong>
+                    <p>将一个依赖大量人工经验和规则的经典Fuzzing思想，通过LLM的能力实现了端到端的自动化，这是一个重大的工程和理念突破。</p>
+                </li>
+                <li>
+                    <strong>展示了“驾驭”LLM的巨大潜力</strong>
+                    <p>证明了通过提供高质量的上下文或进行领域内的微调，可以有效“驾驭”LLM，使其生成更符合特定任务（如寻找Bug）要求的内容。</p>
+                </li>
+                <li>
+                    <strong>对AI安全领域的深刻启示</strong>
+                    <p>FuzzGPT不仅是一个强大的防御性工具，它也揭示了LLM在安全领域的双重性。理解如何引导LLM生成“坏”代码（用于测试），对于未来防御由AI驱动的、能自动寻找并利用漏洞的攻击至关重要。</p>
+                </li>
+            </ol>
+        </section>
+
+    </div>
+
+</body>
+</html>

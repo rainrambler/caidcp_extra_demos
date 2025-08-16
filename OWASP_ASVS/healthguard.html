@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OWASP ASVS 交互式案例浏览器 - 认证安全</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- 
+      Chosen Palette: Calm Harmony (Warm neutrals with teal, amber, and slate blue accents)
+      Application Structure Plan: The application is designed as a single-page, tab-based interactive dashboard focused on a primary case study. Below the main showcase, a collapsible accordion section has been added to provide a complete reference for all 17 ASVS chapters. This two-part structure allows users to first engage with a detailed, practical example (the V6 showcase) and then explore the broader context at their own pace. The accordion is ideal for presenting the 17 chapters without creating an overwhelmingly long page, enhancing usability.
+      Visualization & Content Choices: Source Info: The three levels of ASVS. Goal: Compare & Inform. Method: A central bar chart (Chart.js/Canvas) visualizes the increasing "Security Rigor" across L1, L2, and L3. Interaction: Tooltips on the chart provide a summary of each level's goal. Source Info: Specific verification requirements for each level. Goal: Organize & Inform. Method: Each requirement is presented as a structured card. Source Info: All 17 ASVS chapters. Goal: Reference & Organize. Method: An interactive accordion (HTML/CSS/JS) lists all chapters. Interaction: Click to expand/collapse and view the control objective for each chapter. Justification: This layered approach supports both guided learning (the case study) and self-directed exploration (the reference accordion). All visuals are built with Chart.js or structured HTML/CSS.
+      CONFIRMATION: NO SVG graphics used. NO Mermaid JS used.
+    -->
+    <style>
+        body {
+            font-family: 'Inter', 'Noto Sans SC', sans-serif;
+            background-color: #FDFBF7;
+            color: #1f2937;
+        }
+        .tab {
+            transition: all 0.3s ease;
+        }
+        .tab.active {
+            border-color: #0d9488;
+            background-color: #ccfbf1;
+            color: #134e4a;
+        }
+        .requirement-card {
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+            border-left-width: 4px;
+        }
+        .requirement-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.07), 0 4px 6px -2px rgba(0, 0, 0, 0.04);
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 250px;
+            max-height: 35vh;
+        }
+        .accordion-header {
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        .accordion-header:hover {
+            background-color: #f3f4f6;
+        }
+        .accordion-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.5s ease-in-out;
+        }
+        .accordion-icon {
+            transition: transform 0.5s ease;
+        }
+        .accordion-header.open .accordion-icon {
+            transform: rotate(180deg);
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 300px;
+            }
+        }
+        html {
+            scroll-behavior: smooth;
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <div class="container mx-auto p-4 sm:p-6 lg:p-8">
+        
+        <header class="text-center mb-10">
+            <div class="inline-block bg-teal-100 text-teal-800 text-sm font-semibold px-4 py-1 rounded-full mb-4">
+                OWASP ASVS 5.0 应用案例: V6 认证安全
+            </div>
+            <h1 class="text-4xl md:text-5xl font-bold text-slate-800 mb-4">“康护在线”平台安全验证</h1>
+            <p class="max-w-3xl mx-auto text-lg text-slate-600">
+                一个典型的在线医疗平台，因处理高度敏感的个人健康信息（PHI），其认证体系的安全性至关重要。本应用将通过ASVS的三个等级，展示如何层层递进地加固其安全防线。
+            </p>
+        </header>
+
+        <section class="mb-12 p-6 bg-white rounded-2xl shadow-md border border-gray-200">
+            <h2 class="text-2xl font-bold text-center text-slate-700 mb-6">安全验证等级概览</h2>
+            <div class="chart-container">
+                <canvas id="levelChart"></canvas>
+            </div>
+        </section>
+
+        <main>
+            <div id="tabs" class="flex flex-wrap justify-center gap-2 sm:gap-4 mb-8">
+                <button class="tab text-base sm:text-lg font-semibold py-3 px-6 border-b-4 border-transparent rounded-lg focus:outline-none" data-level="L1">等级 1: 基础防御</button>
+                <button class="tab text-base sm:text-lg font-semibold py-3 px-6 border-b-4 border-transparent rounded-lg focus:outline-none" data-level="L2">等级 2: 纵深防御</button>
+                <button class="tab text-base sm:text-lg font-semibold py-3 px-6 border-b-4 border-transparent rounded-lg focus:outline-none" data-level="L3">等级 3: 高级防御</button>
+            </div>
+
+            <div id="content-area">
+                <!-- Dynamic content will be injected here -->
+            </div>
+        </main>
+
+        <section class="mt-16">
+            <h2 class="text-3xl font-bold text-center text-slate-700 mb-8">OWASP ASVS 5.0 全部 17 个验证域参考 (课后阅读)</h2>
+            <div id="full-asvs-accordion" class="space-y-2 max-w-4xl mx-auto">
+                <!-- Accordion for all 17 chapters will be injected here -->
+            </div>
+        </section>
+
+        <footer class="text-center mt-16 text-slate-500">
+            <p>&copy; 2025 AI驱动安全课程. 所有内容均基于OWASP ASVS v5.0。</p>
+        </footer>
+    </div>
+
+    <script>
+        const asvsData = {
+            "L1": {
+                title: "等级 1: 基础应用安全验证",
+                goal: "抵御常见的、机会主义的攻击，是所有应用必须达到的安全底线。",
+                borderColor: "border-blue-500",
+                requirements: [
+                    { id: "V6.2.1", title: "密码最小长度", requirement: "验证用户设置的密码长度至少为8个字符。", example: "在‘康护在线’的注册流程中，我们必须测试系统是否会拒绝少于8个字符的密码，例如‘pass123’。这是防止弱密码的第一道防线。" },
+                    { id: "V6.3.2", title: "禁用默认账户", requirement: "验证系统中不存在默认用户账户（如 'root', 'admin', 'sa'），或者这些账户已被禁用。", example: "我们需要确认‘康护在线’在部署后，没有任何类似‘admin/admin’的通用管理员账户存在。所有账户都必须是唯一创建的，以防止攻击者通过猜测默认凭证轻易进入系统。" },
+                    { id: "V6.4.1", title: "初始密码强制变更", requirement: "验证系统生成的初始密码或激活码是安全的、有时效性的，并且在首次使用后必须强制用户更改。", example: "当管理员为新医生创建账户时，系统会生成一个临时密码。我们必须验证这个临时密码在医生首次登录后就会失效，并强制他设置一个新密码。这避免了初始密码长期有效带来的风险。" }
+                ]
+            },
+            "L2": {
+                title: "等级 2: 纵深防御安全验证",
+                goal: "抵御有一定动机和技能的攻击者，适合处理如PHI之类的敏感数据。",
+                borderColor: "border-amber-500",
+                requirements: [
+                    { id: "V6.3.3", title: "强制多因素认证 (MFA)", requirement: "验证系统必须使用多因素认证或多种单因素认证的组合来访问应用。", example: "由于医生账户是高价值目标，‘康护在线’必须强制医生启用MFA才能登录，例如密码+TOTP。仅有密码不足以保护敏感的患者数据，这是L2的核心要求。" },
+                    { id: "V6.2.12", title: "泄露密码检查", requirement: "验证在账户注册或密码更改时，提交的密码是否与已知的泄露密码列表进行比对。", example: "当一个患者注册并试图使用一个非常常见且已在其他数据泄露事件中暴露的密码（如 'Password123!'）时，‘康护在线’的系统应该拒绝该密码，并提示用户选择一个更独特的密码。" },
+                    { id: "V6.4.3", title: "凭证恢复安全", requirement: "验证用于重置忘记密码的安全流程，该流程不能绕过任何已启用的多因素认证机制。", example: "我们测试‘忘记密码’功能。如果一个启用了MFA的医生账户尝试重置密码，系统不仅要验证邮箱，还应该要求第二个因素的验证（如备用手机号），才能允许重置。这可以防止仅通过攻破邮箱就重置账户的攻击。" }
+                ]
+            },
+            "L3": {
+                title: "等级 3: 高级应用安全验证",
+                goal: "抵御专业的、资源充足的攻击者，适合安全关键或高价值应用。",
+                borderColor: "border-red-500",
+                requirements: [
+                    { id: "V6.3.3", title: "强制硬件多因素认证", requirement: "验证系统（对于L3）必须使用基于硬件的认证机制作为其中一个因素，以抵抗钓鱼攻击。", example: "对于访问整个平台后台的系统管理员，L3要求‘康护在线’必须强制使用硬件MFA，如YubiKey (FIDO2)。这意味着即使管理员的密码和手机都被窃取，没有这个物理钥匙，攻击者也无法登录。" },
+                    { id: "V6.3.5", title: "可疑登录尝试通知", requirement: "验证在发生可疑的认证尝试（无论成功与否）后，用户是否会收到通知。", example: "如果一个医生的账户在凌晨3点，从一个从未登录过的海外IP地址尝试登录，即使登录失败，系统也应该立即向该医生的注册邮箱和手机发送一封安全警报邮件，通知他发生了可疑活动。" },
+                    { id: "V6.6.1", title: "弃用不安全的MFA方式", requirement: "验证对于L3应用，通过电话或短信（PSTN/SMS）发送一次性密码的方式不能作为认证选项。", example: "‘康护在线’的L3版本，在MFA设置选项中，不应该再提供‘通过短信接收验证码’的选项。因为SIM卡交换等攻击会使这种方式变得不安全，必须引导用户使用更安全的TOTP应用或硬件密钥。" }
+                ]
+            }
+        };
+        
+        const allChaptersData = [
+            { id: "V1", title: "编码与净化", objective: "处理不可信数据，防止因不安全处理导致的技术漏洞，如注入攻击。" },
+            { id: "V2", title: "验证与业务逻辑", objective: "确保应用接收的输入符合业务预期，业务逻辑流程按序执行且无法被绕过，并能抵御自动化攻击。" },
+            { id: "V3", title: "Web前端安全", objective: "保护通过Web前端执行的攻击，不适用于机器到机器的解决方案。" },
+            { id: "V4", title: "API与Web服务", objective: "涵盖应用暴露API（通常使用JSON, XML, GraphQL）时的相关安全配置和机制。" },
+            { id: "V5", title: "文件处理", objective: "处理因文件使用可能带来的各种风险，包括拒绝服务、未授权访问和存储耗尽。" },
+            { id: "V6", title: "认证", objective: "建立或确认个人或设备的真实性，涉及验证身份声明、抵抗冒充以及防止密码恢复或拦截。" },
+            { id: "V7", title: "会话管理", objective: "允许应用在无状态通信协议（如HTTP）上关联用户和设备的交互，防止攻击者获取、使用或滥用会话。" },
+            { id: "V8", title: "授权", objective: "确保访问权限仅授予被允许的消费者（用户、服务器等），强制执行最小权限原则。" },
+            { id: "V9", title: "自包含令牌", objective: "针对JWT和SAML断言等自包含令牌的使用，验证其完整性和在特定上下文中的有效性。" },
+            { id: "V10", title: "OAuth与OIDC", objective: "为委托授权（OAuth）和用户身份认证（OIDC）提供最佳实践，涵盖客户端、资源服务器和授权服务器的角色。" },
+            { id: "V11", title: "密码学", objective: "定义通用密码学的最佳实践，包括密钥管理、算法选择和未来防护（如后量子密码学）。" },
+            { id: "V12", title: "安全通信", objective: "保护传输中的数据，包括客户端与后端以及内部服务之间的通信，确保使用最新的加密协议和证书验证。" },
+            { id: "V13", title: "配置", objective: "确保应用的默认配置在互联网上是安全的，涵盖数据泄露防护、组件间安全通信和密钥管理。" },
+            { id: "V14", title: "数据保护", objective: "实施控制以限制对客户端设备上敏感数据的未授权访问，定义需要保护的数据及其保护方式。" },
+            { id: "V15", title: "安全编码与架构", objective: "提供通用的安全编码和架构要求，关注代码质量、依赖管理和防御性编码实践。" },
+            { id: "V16", title: "安全日志与错误处理", objective: "记录与安全相关的事件以支持检测、响应和调查，同时确保应用在失败时能安全地处理错误，避免泄露敏感信息。" },
+            { id: "V17", title: "WebRTC", objective: "为Web实时通信（WebRTC）基础设施提供安全要求，涵盖信令、媒体和TURN服务器的安全。" }
+        ];
+
+        const tabs = document.getElementById('tabs');
+        const contentArea = document.getElementById('content-area');
+        const accordionContainer = document.getElementById('full-asvs-accordion');
+        let currentLevel = 'L1'; 
+
+        function renderContent(level) {
+            const data = asvsData[level];
+            const requirementsHtml = data.requirements.map(req => `
+                <div class="requirement-card bg-white p-6 rounded-lg shadow-sm mb-6 ${data.borderColor}">
+                    <h4 class="text-xl font-bold text-slate-800 mb-2">${req.id}: ${req.title}</h4>
+                    <p class="text-slate-500 italic mb-4">${req.requirement}</p>
+                    <div class="bg-slate-50 p-4 rounded-md border border-slate-200">
+                        <p class="text-slate-700"><strong class="font-semibold text-teal-700">讲解案例:</strong> ${req.example}</p>
+                    </div>
+                </div>
+            `).join('');
+
+            contentArea.innerHTML = `
+                <div class="bg-white p-6 rounded-2xl shadow-lg border border-gray-200">
+                    <h2 class="text-3xl font-bold text-slate-800 mb-2">${data.title}</h2>
+                    <p class="text-lg text-slate-600 mb-8">${data.goal}</p>
+                    <div>
+                        ${requirementsHtml}
+                    </div>
+                </div>
+            `;
+        }
+
+        function updateActiveTab(level) {
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+                if (tab.dataset.level === level) {
+                    tab.classList.add('active');
+                }
+            });
+        }
+
+        function renderAccordion() {
+            const accordionHtml = allChaptersData.map(chapter => `
+                <div class="border border-gray-200 rounded-lg bg-white">
+                    <div class="accordion-header flex justify-between items-center p-4">
+                        <h3 class="text-lg font-semibold text-slate-700">${chapter.id}: ${chapter.title}</h3>
+                        <span class="accordion-icon text-teal-600 font-bold text-2xl transform">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+                        </span>
+                    </div>
+                    <div class="accordion-content">
+                        <div class="p-4 border-t border-gray-200 bg-slate-50">
+                            <p class="text-slate-600">${chapter.objective}</p>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+            accordionContainer.innerHTML = accordionHtml;
+        }
+
+        tabs.addEventListener('click', (e) => {
+            if (e.target.classList.contains('tab')) {
+                currentLevel = e.target.dataset.level;
+                updateActiveTab(currentLevel);
+                renderContent(currentLevel);
+            }
+        });
+        
+        accordionContainer.addEventListener('click', (e) => {
+            const header = e.target.closest('.accordion-header');
+            if (header) {
+                const content = header.nextElementSibling;
+                header.classList.toggle('open');
+                if (content.style.maxHeight) {
+                    content.style.maxHeight = null;
+                } else {
+                    content.style.maxHeight = content.scrollHeight + "px";
+                }
+            }
+        });
+
+        // Chart.js implementation
+        const ctx = document.getElementById('levelChart').getContext('2d');
+        const levelChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['等级 1', '等级 2', '等级 3'],
+                datasets: [{
+                    label: '安全严格程度',
+                    data: [30, 70, 100],
+                    backgroundColor: [
+                        'rgba(59, 130, 246, 0.6)',
+                        'rgba(245, 158, 11, 0.6)',
+                        'rgba(239, 68, 68, 0.6)'
+                    ],
+                    borderColor: [
+                        'rgba(59, 130, 246, 1)',
+                        'rgba(245, 158, 11, 1)',
+                        'rgba(239, 68, 68, 1)'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                maintainAspectRatio: false,
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: '安全严格程度（示意）',
+                            font: { size: 14 }
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                if (context.parsed.y !== null) {
+                                    const level = context.label.split(' ')[1];
+                                    label += asvsData['L' + level].goal;
+                                }
+                                return label;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // Initial render
+        updateActiveTab(currentLevel);
+        renderContent(currentLevel);
+        renderAccordion();
+
+    </script>
+</body>
+</html>

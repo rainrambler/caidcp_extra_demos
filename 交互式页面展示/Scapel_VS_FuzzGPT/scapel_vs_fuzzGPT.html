@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Fuzzing范式演进报告</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chosen Palette: Calm Neutrals (Slate, Beige, with a Teal accent) -->
+    <!-- Application Structure Plan: A tab-based single-page application. Users navigate between Introduction, Scalpel, FuzzGPT, and Comparison sections. Interactive HTML/CSS diagrams are used to visually explain the core mechanisms of each fuzzing paradigm, enhancing user understanding beyond static text. This structure breaks down complex information into manageable, user-selectable chunks, improving navigation and engagement. -->
+    <!-- Visualization & Content Choices: Report Info: Scalpel's deconstruction process -> Goal: Explain a process -> Viz: Animated HTML/CSS diagram showing JSON to Tree to mutated Tree to JSON -> Interaction: Hover tooltips -> Justification: Visually demonstrates the complex abstract process, making it intuitive. Report Info: FuzzGPT's knowledge source -> Goal: Show information flow -> Viz: HTML/CSS diagram with icons (GitHub -> LLM -> Test Case) -> Justification: Simplifies the concept of history-driven generation. Report Info: Side-by-side comparison -> Goal: Compare attributes -> Viz: Styled HTML Table -> Justification: Standard and effective way to present direct comparisons. Library/Method: Vanilla JS and Tailwind CSS. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            background-color: #f8fafc;
+            font-family: 'Inter', sans-serif;
+        }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        .tab-active {
+            border-color: #0d9488;
+            color: #0d9488;
+            font-weight: 600;
+        }
+        .content-section {
+            display: none;
+        }
+        .content-section.active {
+            display: block;
+        }
+        .diagram-box {
+            background-color: #f1f5f9;
+            border: 1px solid #e2e8f0;
+            padding: 1.5rem;
+            border-radius: 0.5rem;
+            min-height: 280px;
+        }
+        .diagram-arrow {
+            font-size: 2rem;
+            color: #94a3b8;
+            align-self: center;
+        }
+        .tree-node {
+            background-color: #ffffff;
+            border: 1px solid #cbd5e1;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-family: monospace;
+            font-size: 0.875rem;
+            box-shadow: 0 1px 3px 0 rgba(0,0,0,0.1);
+        }
+        .tree-node.mutated {
+            animation: pulse 1.5s infinite;
+            border-color: #f43f5e;
+            color: #f43f5e;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.8; transform: scale(1.05); }
+        }
+        .icon-box {
+            font-size: 3rem;
+            line-height: 1;
+        }
+    </style>
+</head>
+<body class="antialiased text-slate-700">
+
+    <div class="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8">
+        
+        <header class="text-center mb-8">
+            <h1 class="text-3xl sm:text-4xl font-bold text-slate-800">API Fuzzing范式演进报告</h1>
+            <p class="mt-2 text-lg text-slate-500">从结构化变异到智能生成</p>
+        </header>
+
+        <div class="bg-white p-6 rounded-xl shadow-lg">
+            
+            <nav class="border-b border-slate-200 mb-6">
+                <ul class="flex flex-wrap -mb-px text-sm font-medium text-center text-slate-500">
+                    <li class="mr-2">
+                        <button class="tab-btn inline-block p-4 border-b-2 border-transparent rounded-t-lg hover:text-slate-600 hover:border-slate-300" data-target="intro">引言</button>
+                    </li>
+                    <li class="mr-2">
+                        <button class="tab-btn inline-block p-4 border-b-2 border-transparent rounded-t-lg hover:text-slate-600 hover:border-slate-300" data-target="scalpel">结构化变异 (Scalpel)</button>
+                    </li>
+                    <li class="mr-2">
+                        <button class="tab-btn inline-block p-4 border-b-2 border-transparent rounded-t-lg hover:text-slate-600 hover:border-slate-300" data-target="fuzzgpt">智能生成 (FuzzGPT)</button>
+                    </li>
+                    <li>
+                        <button class="tab-btn inline-block p-4 border-b-2 border-transparent rounded-t-lg hover:text-slate-600 hover:border-slate-300" data-target="comparison">对比与结论</button>
+                    </li>
+                </ul>
+            </nav>
+
+            <main>
+                <section id="intro" class="content-section space-y-4">
+                    <h2 class="text-2xl font-semibold text-teal-700">引言</h2>
+                    <p>API（应用程序编程接口）已成为现代软件架构的核心，其安全性直接关系到整个系统的稳定与安全。模糊测试（Fuzzing）作为一种高效的自动化漏洞挖掘技术，在API安全领域扮演着至关重要的角色。</p>
+                    <p>此应用将带您深入分析两种代表不同技术演进方向的API Fuzzing范式：以KCON2022议题中的<strong>Scalpel</strong>为代表的传统结构化变异方法，以及以前沿研究<strong>FuzzGPT</strong>为代表的、由大语言模型（LLM）驱动的智能生成方法。旨在系统性地梳理、对比并总结这两种范式的核心思想与价值。</p>
+                </section>
+
+                <section id="scalpel" class="content-section space-y-4">
+                    <h2 class="text-2xl font-semibold text-teal-700">1. 传统API Fuzzing的深化：Scalpel的“结构化变异”</h2>
+                    <div class="p-4 bg-slate-50 rounded-lg border border-slate-200">
+                        <h3 class="font-semibold text-slate-800">核心挑战</h3>
+                        <p class="mt-1">现代Web API大量使用JSON等格式，其请求具有<strong>深度嵌套、复杂编码、格式多样</strong>的特点。传统Fuzzer难以在维持请求结构合法性的同时，对深层参数进行有效变异。</p>
+                    </div>
+                    <div class="p-4 bg-slate-50 rounded-lg border border-slate-200">
+                        <h3 class="font-semibold text-slate-800">解决方案：“解构-变异-重构”</h3>
+                        <p class="mt-1">Scalpel的核心思想是放弃对请求报文的模糊处理，转向对数据结构的精确控制。下面的图示为您演示了这个过程。</p>
+                    </div>
+                    <div class="diagram-box flex flex-col md:flex-row items-center justify-around gap-4 text-center">
+                        <div class="flex-1">
+                            <h4 class="font-semibold mb-2">1. 解构</h4>
+                            <div class="text-left bg-white p-3 rounded-md shadow-sm text-xs font-mono">
+                                <p>{"user": {</p>
+                                <p class="ml-4">"id": 123,</p>
+                                <p class="ml-4">"role": "guest"</p>
+                                <p>}}</p>
+                            </div>
+                        </div>
+                        <div class="diagram-arrow">→</div>
+                        <div class="flex-1">
+                            <h4 class="font-semibold mb-2">2. 变异 (在树上)</h4>
+                            <div class="space-y-2 flex flex-col items-center">
+                                <div class="tree-node">user</div>
+                                <div class="border-l-2 border-slate-300 h-4"></div>
+                                <div class="flex gap-4">
+                                    <div class="flex flex-col items-center space-y-2">
+                                        <div class="tree-node mutated">id: ' OR 1=1--</div>
+                                    </div>
+                                    <div class="flex flex-col items-center space-y-2">
+                                        <div class="tree-node">role: guest</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="diagram-arrow">→</div>
+                        <div class="flex-1">
+                            <h4 class="font-semibold mb-2">3. 重构</h4>
+                            <div class="text-left bg-white p-3 rounded-md shadow-sm text-xs font-mono">
+                                <p>{"user": {</p>
+                                <p class="ml-4 text-rose-500 font-bold">"id": "' OR 1=1--",</p>
+                                <p class="ml-4">"role": "guest"</p>
+                                <p>}}</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="fuzzgpt" class="content-section space-y-4">
+                    <h2 class="text-2xl font-semibold text-teal-700">2. AI驱动的Fuzzing革命：FuzzGPT的“智能生成”</h2>
+                    <div class="p-4 bg-slate-50 rounded-lg border border-slate-200">
+                        <h3 class="font-semibold text-slate-800">核心挑战</h3>
+                        <p class="mt-1">即使是能够生成有效API调用的LLM，其生成的测试用例也往往是“普通”的，难以触及由<strong>不寻常的API用法</strong>或<strong>边缘输入组合</strong>导致的深层Bug。</p>
+                    </div>
+                    <div class="p-4 bg-slate-50 rounded-lg border border-slate-200">
+                        <h3 class="font-semibold text-slate-800">解决方案：“历史驱动的智能生成”</h3>
+                        <p class="mt-1">FuzzGPT的核心思想是让LLM从历史Bug中学习如何创造新的Bug。它通过挖掘开源仓库的Bug报告，构建一个包含“不寻常”代码模式的知识库来引导LLM。</p>
+                    </div>
+                    <div class="diagram-box flex flex-col md:flex-row items-center justify-around gap-4 text-center">
+                        <div class="flex-1">
+                            <h4 class="font-semibold mb-2">1. 知识来源</h4>
+                            <div class="icon-box">📚</div>
+                            <p class="text-sm">历史Bug报告<br/>(GitHub Issues/PRs)</p>
+                        </div>
+                        <div class="diagram-arrow">→</div>
+                        <div class="flex-1">
+                            <h4 class="font-semibold mb-2">2. 智能生成</h4>
+                            <div class="icon-box">🤖</div>
+                            <p class="text-sm">LLM通过In-context Learning<br/>或Fine-tuning学习</p>
+                        </div>
+                        <div class="diagram-arrow">→</div>
+                        <div class="flex-1">
+                            <h4 class="font-semibold mb-2">3. 测试原理</h4>
+                            <div class="icon-box">🧪</div>
+                            <p class="text-sm">生成不寻常的测试用例<br/>(刁钻的API调用)</p>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="comparison" class="content-section space-y-4">
+                    <h2 class="text-2xl font-semibold text-teal-700">3. 对比分析与结论</h2>
+                    <p>FuzzGPT与Scalpel代表了API Fuzzing在不同抽象层面的探索，两者是互补而非竞争的关系。下表总结了它们的核心区别。</p>
+                    <div class="overflow-x-auto mt-4">
+                        <table class="w-full text-sm text-left text-slate-500">
+                            <thead class="text-xs text-slate-700 uppercase bg-slate-100">
+                                <tr>
+                                    <th scope="col" class="px-6 py-3 rounded-l-lg">特性</th>
+                                    <th scope="col" class="px-6 py-3">Scalpel (传统API Fuzzer)</th>
+                                    <th scope="col" class="px-6 py-3 rounded-r-lg">FuzzGPT (LLM Fuzzer)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr class="bg-white border-b">
+                                    <th scope="row" class="px-6 py-4 font-medium text-slate-900 whitespace-nowrap">核心目标</th>
+                                    <td class="px-6 py-4">处理<strong>语法复杂</strong>的请求结构</td>
+                                    <td class="px-6 py-4">生成<strong>语义不寻常</strong>的测试逻辑</td>
+                                </tr>
+                                <tr class="bg-white border-b">
+                                    <th scope="row" class="px-6 py-4 font-medium text-slate-900 whitespace-nowrap">关注层面</th>
+                                    <td class="px-6 py-4">数据传输结构层</td>
+                                    <td class="px-6 py-4">应用业务逻辑层</td>
+                                </tr>
+                                <tr class="bg-white border-b">
+                                    <th scope="row" class="px-6 py-4 font-medium text-slate-900 whitespace-nowrap">方法论</th>
+                                    <td class="px-6 py-4">基于请求样本的<strong>结构化变异</strong></td>
+                                    <td class="px-6 py-4">历史知识引导下的<strong>逻辑创造</strong></td>
+                                </tr>
+                                <tr class="bg-white">
+                                    <th scope="row" class="px-6 py-4 font-medium text-slate-900 whitespace-nowrap">Fuzzing分类</th>
+                                    <td class="px-6 py-4">经典<strong>黑盒Fuzzing</strong></td>
+                                    <td class="px-6 py-4">智能/历史驱动的<strong>黑盒Fuzzing</strong></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="mt-6 pt-6 border-t border-slate-200">
+                        <h3 class="text-xl font-semibold text-slate-800">结论</h3>
+                        <p class="mt-2">通过对Scalpel和FuzzGPT的深入分析，我们清晰地看到了API Fuzzing的两条演进路径。Scalpel代表了传统技术在应对现代Web架构时的深度优化，其对复杂结构的精准处理能力在黑盒渗透测试中依然不可或缺。而FuzzGPT则利用AI的强大生成能力，开辟了“智能生成”的新范式，在需要深度逻辑探索的软件库测试中展现出巨大潜力。</p>
+                        <p class="mt-2">未来的API安全测试，必然是这两种思想融合的产物：既需要Scalpel般的结构化处理能力，也需要FuzzGPT般的逻辑创造能力，从而实现对API从外到内、从结构到逻辑的全方位深度自动化安全测试。</p>
+                    </div>
+                </section>
+            </main>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const tabs = document.querySelectorAll('.tab-btn');
+            const contentSections = document.querySelectorAll('.content-section');
+
+            function switchTab(targetId) {
+                tabs.forEach(tab => {
+                    if (tab.dataset.target === targetId) {
+                        tab.classList.add('tab-active');
+                    } else {
+                        tab.classList.remove('tab-active');
+                    }
+                });
+
+                contentSections.forEach(section => {
+                    if (section.id === targetId) {
+                        section.classList.add('active');
+                    } else {
+                        section.classList.remove('active');
+                    }
+                });
+            }
+
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    switchTab(tab.dataset.target);
+                });
+            });
+
+            switchTab('intro');
+        });
+    </script>
+
+</body>
+</html>

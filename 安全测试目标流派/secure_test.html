@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>探索安全测试目标定义流派</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- 
+      Chosen Palette: Calm Harmony (Warm neutrals with teal and slate blue accents)
+      Application Structure Plan: The SPA is designed as a single-page exploratory dashboard. The main interaction is a grid of cards, each representing one of the risk assessment frameworks. Clicking a card reveals a detailed section below with a consistent structure (Core Idea, Perspective, AI Empowerment, etc.). This card-based, reveal-on-click structure was chosen for its intuitiveness on both desktop and mobile, allowing users to get a quick overview and then dive deep into specific topics without navigating away from the main page. This non-linear exploration path is more user-friendly than a linear report format.
+      Visualization & Content Choices: Data from the report is organized into distinct frameworks. Goal: Inform & Compare. Method: Each framework is presented in a structured card layout. For STRIDE, a radar chart (Chart.js/Canvas) visualizes the six threat categories. For FMEA and DREAD, bar charts (Chart.js/Canvas) illustrate risk prioritization. For ATT&CK/Kill Chain, PASTA, OCTAVE, and FRA, simplified process flow diagrams (HTML/CSS) are used. Goal: Organize. Method: These choices provide quick visual summaries of complex ideas. Interaction: Charts will have tooltips. Justification: Visualizations make abstract frameworks more tangible and easier to compare. All graphics are implemented using Chart.js or structured HTML/CSS with Tailwind. CONFIRMED: NO SVG/Mermaid used.
+      CONFIRMATION: NO SVG graphics used. NO Mermaid JS used.
+    -->
+    <style>
+        body {
+            font-family: 'Inter', 'Noto Sans SC', sans-serif;
+            background-color: #FDFBF7; /* Warm neutral background */
+            color: #333;
+        }
+        .framework-card {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .framework-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 500px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 40vh;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 350px;
+            }
+        }
+        html {
+            scroll-behavior: smooth;
+        }
+        .tag {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-weight: 500;
+            font-size: 0.875rem;
+        }
+        .process-step {
+            display: flex;
+            align-items: center;
+            padding: 1rem;
+            background-color: #F3F4F6;
+            border-radius: 0.5rem;
+            margin-bottom: 0.5rem;
+            border-left: 4px solid #3B82F6;
+        }
+        .process-arrow {
+            text-align: center;
+            font-size: 1.5rem;
+            color: #9CA3AF;
+            margin: 0.25rem 0;
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <div class="container mx-auto p-4 md:p-8">
+        <header class="text-center mb-12">
+            <h1 class="text-4xl md:text-5xl font-bold text-slate-800 mb-4">探索安全测试目标定义流派</h1>
+            <p class="max-w-3xl mx-auto text-lg text-slate-600 bg-amber-50 p-6 rounded-lg border border-amber-200">
+                我们看到了多种不同的‘流派’，从STRIDE到FMEA，看似复杂。但请大家记住一个核心：<strong class="text-teal-700">所有这些方法，都是为了回答一个根本问题——我们的风险在哪里？</strong> 它们都是进行风险评估（Risk Assessment）的结构化方法论。安全测试不是漫无目的地扫描，而是<strong class="text-teal-700">由风险驱动的验证活动</strong>。这些流派的输出——无论是威胁列表、攻击路径图还是风险评分——就是我们测试工作的输入清单和优先级地图。
+            </p>
+        </header>
+
+        <main>
+            <div id="framework-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6 md:gap-8">
+                <!-- Framework cards will be injected here by JavaScript -->
+            </div>
+
+            <section id="details-section" class="mt-16 p-6 md:p-8 bg-white rounded-2xl shadow-lg border border-gray-200" style="display: none;">
+                <!-- Details will be injected here -->
+            </section>
+        </main>
+    </div>
+
+    <script>
+        const frameworksData = {
+            stride: {
+                title: "STRIDE 威胁建模",
+                icon: "🛡️",
+                tags: ["设计阶段", "架构师视角", "技术威胁"],
+                intro: "从系统设计的层面，系统性地识别潜在的技术威胁。STRIDE是六种威胁类型的首字母缩写，是典型的“安全左移”实践。",
+                details: [
+                    { title: "核心思想", content: "识别六大类技术威胁：Spoofing (仿冒), Tampering (篡改), Repudiation (否认), Information Disclosure (信息泄露), Denial of Service (拒绝服务), Elevation of Privilege (权限提升)。" },
+                    { title: "分析视角", content: "设计者/架构师视角。关注数据流、信任边界和系统组件交互。" },
+                    { title: "适用阶段", content: "设计阶段。在代码编写前识别并修复架构层面的安全隐患。" },
+                    { title: "输出成果", content: "一份详细的威胁列表，每个威胁都关联到系统的特定组件。" },
+                    { title: "AI 赋能点", content: "<strong>威胁自动生成：</strong>将数据流图（DFD）的描述输入给AI，可自动生成潜在威胁场景，极大提升建模效率。<br><strong>缓解措施推荐：</strong>针对AI生成的每个威胁，可进一步要求AI推荐对应的安全控制措施或测试用例。" }
+                ],
+                chartType: 'radar',
+                visualizationTitle: 'STRIDE 威胁画像示例'
+            },
+            nist: {
+                title: "NIST / GB/T 风险评估",
+                icon: "⚖️",
+                tags: ["规划阶段", "管理者视角", "资产为中心"],
+                intro: "以资产为中心，通过公式化的方法（风险 = 威胁 x 脆弱性 x 影响）来识别和量化风险，是系统和全面的自顶向下方法。",
+                details: [
+                    { title: "核心思想", content: "围绕资产识别威胁、脆弱性，评估其影响，并最终量化风险等级。" },
+                    { title: "分析视角", content: "管理者/审计者视角。更关注组织的整体风险态势、资产价值和业务影响。" },
+                    { title: "适用阶段", content: "规划与治理阶段。常用于建立信息安全管理体系（ISMS）或满足合规性要求。" },
+                    { title: "输出成果", content: "一份正式的风险评估报告，包含风险等级（高、中、低）和风险处置计划。" },
+                    { title: "AI 赋能点", content: "<strong>资产与威胁情报关联：</strong>AI可以自动将资产清单与外部威胁情报库关联，动态识别最新威胁。<br><strong>风险量化辅助：</strong>AI分析历史安全事件数据，为“威胁发生可能性”和“潜在影响”的评估提供数据驱动的建议。" }
+                ],
+                chartType: 'process',
+                visualizationTitle: '风险评估流程'
+            },
+            attack: {
+                title: "ATT&CK® / Kill Chain",
+                icon: "⚔️",
+                tags: ["测试与运营", "攻击者视角", "行为分析"],
+                intro: "从攻击者的战术、技术和程序（TTPs）出发，解构一次完整的攻击是如何发生的，核心是“知己知彼”。",
+                details: [
+                    { title: "核心思想", content: "Kill Chain提供高层次的线性攻击阶段模型，而ATT&CK®则提供一个极其详尽、矩阵式的技术库，描述攻击者的具体行为。" },
+                    { title: "分析视角", content: "攻击者/红队视角。通过理解攻击者行为来反推防御和检测的重点。" },
+                    { title: "适用阶段", content: "测试与运营阶段。用于规划渗透测试、红蓝对抗，以及在SOC中对告警进行归因溯源。" },
+                    { title: "输出成果", content: "攻击路径图或防御覆盖热力图，明确攻击者可能采用的技术及我方防御能力。" },
+                    { title: "AI 赋能点", content: "<strong>TTPs自动映射：</strong>AI可以分析安全告警或日志序列，自动将其映射到ATT&CK矩阵中的具体技术。<br><strong>攻击路径推演：</strong>基于ATT&CK知识库，AI可模拟攻击者，在给定环境中推演出最高效的攻击路径。" }
+                ],
+                chartType: 'process',
+                visualizationTitle: '简化版网络攻击杀伤链'
+            },
+            attack_trees: {
+                title: "攻击树 (Attack Trees)",
+                icon: "🌳",
+                tags: ["设计与测试", "逻辑分析师视角", "路径分解"],
+                intro: "将一个总体的攻击目标分解为一系列逻辑关联的子任务，用树状结构清晰地展示所有可能的攻击路径。",
+                details: [
+                    { title: "核心思想", content: "通过AND/OR节点，将高级攻击目标（树根）逐层分解为更具体的技术步骤（树叶），系统化地枚举所有攻击可能性。" },
+                    { title: "分析视角", content: "渗透测试者/逻辑分析师视角。关注达成目标的逻辑步骤和条件。" },
+                    { title: "适用阶段", content: "设计与测试阶段。用于分析潜在攻击逻辑和系统化地生成测试用例。" },
+                    { title: "输出成果", content: "一棵或多棵攻击树图，直观地展示所有可能的攻击方法。" },
+                    { title: "AI 赋能点", content: "<strong>攻击树自动生成：</strong>向AI描述一个攻击目标和系统环境，AI可以自动生成一个初步的攻击树，列出它能想到的各种攻击方法，作为人工分析的起点。" }
+                ],
+                chartType: 'process',
+                visualizationTitle: '攻击树逻辑示例'
+            },
+            fmea: {
+                title: "FMEA / FMECA",
+                icon: "⚙️",
+                tags: ["设计与单元测试", "工程师视角", "功能失效"],
+                intro: "源自工程领域，从系统正常功能可能如何“失效”或被“滥用”的角度来识别风险，特别适合安全关键系统。",
+                details: [
+                    { title: "核心思想", content: "分析系统每个功能的潜在失效模式、原因和影响，并计算风险优先级数（RPN = 严重性 x 发生率 x 可检测性）来进行排序。" },
+                    { title: "分析视角", content: "可靠性工程师/白盒测试者视角。内生地分析系统每个功能的潜在弱点。" },
+                    { title: "适用阶段", content: "设计与单元/集成测试阶段。适合对医疗设备、工控系统等进行深入的可靠性和安全性分析。" },
+                    { title: "输出成果", content: "一份风险/失效模式列表，并根据RPN值进行优先级排序。" },
+                    { title: "AI 赋能点", content: "<strong>失效模式知识库：</strong>AI可以学习海量的历史软件缺陷报告，构建关于“常见功能失效模式”的知识库，在分析新功能时自动提示可能存在的类似风险。" }
+                ],
+                chartType: 'bar',
+                visualizationTitle: 'FMEA 风险优先级 (RPN) 示例'
+            },
+            dread: {
+                title: "DREAD 风险量化",
+                icon: "📊",
+                tags: ["威胁分析", "风险评分", "优先级排序"],
+                intro: "一种用于量化威胁风险优先级的模型，常作为STRIDE的补充，帮助对识别出的威胁进行快速、定性的风险排序。",
+                details: [
+                    { title: "核心思想", content: "通过五个维度对威胁进行评分（通常为1-10分），并计算平均值来确定风险等级：Damage (破坏性), Reproducibility (可复现性), Exploitability (可利用性), Affected users (受影响用户), Discoverability (可发现性)。" },
+                    { title: "分析视角", content: "威胁分析师视角。关注威胁的实际影响和被利用的可能性。" },
+                    { title: "适用阶段", content: "威胁分析阶段。在STRIDE识别出威胁后，使用DREAD进行快速排序，决定优先处理哪些威胁。" },
+                    { title: "输出成果", content: "一个带有风险评分的威胁列表，便于进行优先级排序。" },
+                    { title: "AI 赋能点", content: "<strong>自动评分建议：</strong>AI可以基于其知识库和对威胁描述的理解，为DREAD的五个维度提供初步的评分建议。<br><strong>历史数据对标：</strong>AI可以分析历史类似威胁的实际影响，为“破坏性”和“受影响用户”的评分提供数据支持。" }
+                ],
+                chartType: 'bar',
+                visualizationTitle: 'DREAD 模型风险评分示例'
+            },
+            pasta: {
+                title: "PASTA 攻击模拟",
+                icon: "🍝",
+                tags: ["战略业务层", "攻击者ROI", "七步法"],
+                intro: "一个以业务为中心的七步法，将风险评估的起点强制与业务目标和功能需求绑定，强调攻击者投资回报率。",
+                details: [
+                    { title: "核心思想", content: "强制安全测试必须服务于业务的连续性和盈利能力。它结合了自顶向下的业务分析和自底向上的技术威胁分析。" },
+                    { title: "分析视角", content: "业务影响和攻击者ROI视角。先问“我们的业务目标是什么？”，然后才问“什么样的攻击会破坏这些目标？”。" },
+                    { title: "适用阶段", content: "战略规划与设计阶段。确保安全投入与业务风险直接挂钩。" },
+                    { title: "输出成果", content: "一份以业务为中心的威胁分析和风险缓解报告。" },
+                    { title: "AI 赋能点", content: "<strong>业务流程分析：</strong>AI可以分析业务流程文档，自动识别关键业务资产和流程节点。<br><strong>攻击ROI模拟：</strong>AI可以基于威胁情报和资产价值，模拟不同攻击路径的潜在投资回报率，帮助确定防御优先级。" }
+                ],
+                chartType: 'process',
+                visualizationTitle: 'PASTA 七步流程'
+            },
+            octave: {
+                title: "OCTAVE 资产风险评估",
+                icon: "🏛️",
+                tags: ["组织治理层", "内部人员视角", "自我评估"],
+                intro: "以资产为驱动，强调组织内部的自我评估，建立一套流程让业务和IT人员共同参与风险识别。",
+                details: [
+                    { title: "核心思想", content: "不依赖外部专家，而是建立一套流程，让组织内部的业务和IT人员共同识别关键资产及其面临的内外部威胁。" },
+                    { title: "分析视角", content: "内部人员视角。旨在将风险评估的能力内化为组织自身的能力，强调“授人以渔”。" },
+                    { title: "适用阶段", content: "治理与风险管理阶段。适合希望建立持续、自主风险评估能力的组织。" },
+                    { title: "输出成果", content: "一套组织内部的风险评估流程和风险缓解计划。" },
+                    { title: "AI 赋能点", content: "<strong>资产自动发现：</strong>AI可以扫描网络和云环境，自动生成和更新关键资产清单。<br><strong>内部知识库构建：</strong>AI可以通过RAG技术，整合内部文档和会议纪要，为内部人员进行风险评估提供知识支持。" }
+                ],
+                chartType: 'process',
+                visualizationTitle: 'OCTAVE 评估流程'
+            },
+            fra: {
+                title: "FRA 功能风险分析",
+                icon: "🔬",
+                tags: ["技术实施层", "白盒测试者视角", "功能滥用"],
+                intro: "FMEA/FMECA在软件安全领域的简化和聚焦，从系统正常功能可能如何被“滥用”(Abuse Case)的角度来识别风险。",
+                details: [
+                    { title: "核心思想", content: "关注软件的某个具体功能点，分析其设计目的、输入输出边界，并思考可能被如何滥用（Abuse Case）。" },
+                    { title: "分析视角", content: "开发者/白盒测试者视角。内生地、微观地分析每个功能的潜在弱点。" },
+                    { title:- "适用阶段", content: "具体开发与单元/集成测试阶段。非常适合为单个用户故事（User Story）或功能模块编写具体的安全测试用例。" },
+                    { title: "输出成果", content: "一份针对具体功能的滥用案例列表和相应的安全测试场景。" },
+                    { title: "AI 赋能点", content: "<strong>滥用案例生成：</strong>向AI描述一个功能（如“文件上传功能”），AI可以基于其知识库，自动生成一系列潜在的滥用案例（如上传webshell、上传超大文件等）。" }
+                ],
+                chartType: 'process',
+                visualizationTitle: 'FRA 分析流程'
+            }
+        };
+
+        const grid = document.getElementById('framework-grid');
+        const detailsSection = document.getElementById('details-section');
+        let currentChart = null;
+
+        function createFrameworkCard(id, data) {
+            const tagsHtml = data.tags.map(tag => `<span class="tag bg-teal-100 text-teal-800">${tag}</span>`).join(' ');
+            return `
+                <div class="framework-card cursor-pointer bg-white p-6 rounded-xl border border-gray-200 shadow-sm flex flex-col" data-framework-id="${id}">
+                    <div class="text-4xl mb-4">${data.icon}</div>
+                    <h2 class="text-xl font-bold text-slate-800 mb-2">${data.title}</h2>
+                    <p class="text-slate-600 mb-4 flex-grow">${data.intro}</p>
+                    <div class="flex flex-wrap gap-2 mt-auto">${tagsHtml}</div>
+                </div>
+            `;
+        }
+        
+        function renderDetails(id) {
+            const data = frameworksData[id];
+            if (!data) return;
+
+            const detailsHtml = data.details.map(item => `
+                <div class="mb-6">
+                    <h4 class="text-lg font-semibold text-slate-700 mb-2">${item.title}</h4>
+                    <p class="text-slate-600 leading-relaxed">${item.content}</p>
+                </div>
+            `).join('');
+
+            detailsSection.innerHTML = `
+                <div class="flex justify-between items-start mb-8">
+                    <div>
+                        <h2 class="text-3xl font-bold text-slate-800">${data.title}</h2>
+                    </div>
+                    <button id="close-details" class="text-slate-500 hover:text-slate-800 text-2xl">&times;</button>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div>${detailsHtml}</div>
+                    <div class="flex flex-col items-center justify-center bg-slate-50 p-4 rounded-lg">
+                        <h4 class="text-lg font-semibold text-slate-700 mb-4 text-center">${data.visualizationTitle}</h4>
+                        <div id="viz-container" class="w-full h-full"></div>
+                    </div>
+                </div>
+            `;
+            detailsSection.style.display = 'block';
+            
+            renderVisualization(id);
+
+            document.getElementById('close-details').addEventListener('click', () => {
+                detailsSection.style.display = 'none';
+                if (currentChart) {
+                    currentChart.destroy();
+                    currentChart = null;
+                }
+            });
+            
+            detailsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        function renderVisualization(id) {
+            const data = frameworksData[id];
+            const vizContainer = document.getElementById('viz-container');
+            vizContainer.innerHTML = ''; 
+
+            if (currentChart) {
+                currentChart.destroy();
+                currentChart = null;
+            }
+
+            if (data.chartType === 'radar') {
+                const canvas = document.createElement('canvas');
+                vizContainer.className = 'chart-container';
+                vizContainer.appendChild(canvas);
+                const ctx = canvas.getContext('2d');
+                currentChart = new Chart(ctx, {
+                    type: 'radar',
+                    data: {
+                        labels: ['仿冒', '篡改', '否认', '信息泄露', '拒绝服务', '权限提升'],
+                        datasets: [{
+                            label: '威胁风险等级',
+                            data: [7, 5, 3, 8, 6, 9],
+                            backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            borderWidth: 2,
+                            pointBackgroundColor: 'rgba(54, 162, 235, 1)'
+                        }]
+                    },
+                    options: {
+                        maintainAspectRatio: false,
+                        scales: {
+                            r: {
+                                angleLines: { display: true },
+                                suggestedMin: 0,
+                                suggestedMax: 10,
+                                pointLabels: { font: { size: 14 } },
+                                ticks: { backdropColor: 'transparent' }
+                            }
+                        },
+                        plugins: { legend: { display: false } }
+                    }
+                });
+            } else if (data.chartType === 'bar') {
+                 const canvas = document.createElement('canvas');
+                vizContainer.className = 'chart-container';
+                vizContainer.appendChild(canvas);
+                const ctx = canvas.getContext('2d');
+                let chartData, chartLabels;
+                if (id === 'fmea') {
+                    chartLabels = ['认证模块失效', '支付接口篡改', '日志记录不完整', '数据加密弱'];
+                    chartData = [210, 180, 120, 95];
+                } else if (id === 'dread') {
+                    chartLabels = ['破坏性 (D)', '可利用性 (E)', '受影响用户 (A)', '可复现性 (R)', '可发现性 (D)'];
+                    chartData = [9, 8, 7, 6, 5];
+                }
+                currentChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: chartLabels,
+                        datasets: [{
+                            label: '风险评分',
+                            data: chartData,
+                            backgroundColor: [
+                                'rgba(255, 99, 132, 0.6)',
+                                'rgba(255, 159, 64, 0.6)',
+                                'rgba(255, 205, 86, 0.6)',
+                                'rgba(75, 192, 192, 0.6)',
+                                'rgba(54, 162, 235, 0.6)',
+                            ],
+                            borderColor: [
+                                'rgba(255, 99, 132, 1)',
+                                'rgba(255, 159, 64, 1)',
+                                'rgba(255, 205, 86, 1)',
+                                'rgba(75, 192, 192, 1)',
+                                'rgba(54, 162, 235, 1)',
+                            ],
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        indexAxis: 'y',
+                        maintainAspectRatio: false,
+                        scales: { x: { beginAtZero: true } },
+                        plugins: { legend: { display: false } }
+                    }
+                });
+            } else if (data.chartType === 'process') {
+                vizContainer.className = 'w-full';
+                let steps = [];
+                if (id === 'nist') {
+                    steps = ['资产识别', '威胁识别', '脆弱性分析', '影响评估', '风险定级'];
+                } else if (id === 'attack') {
+                    steps = ['侦察', '武器化', '载荷投递', '漏洞利用', '命令与控制', '目标行动'];
+                } else if (id === 'attack_trees') {
+                    steps = ['总目标: 窃取数据库', 'AND: 获取Web服务器权限', 'OR: 利用SQL注入', 'OR: 暴力破解后台', 'AND: 绕过防火墙'];
+                } else if (id === 'pasta') {
+                    steps = ["定义业务目标", "定义技术范围", "分解应用程序", "威胁分析", "漏洞与弱点分析", "攻击建模", "风险与影响分析"];
+                } else if (id === 'octave') {
+                    steps = ["建立资产威胁画像", "识别基础设施漏洞", "制定安全策略与计划"];
+                } else if (id === 'fra') {
+                    steps = ["功能分解", "识别滥用案例", "风险评级与排序"];
+                }
+                
+                let processHtml = '';
+                steps.forEach((step, index) => {
+                    processHtml += `<div class="process-step">${step}</div>`;
+                    if (index < steps.length - 1) {
+                        processHtml += `<div class="process-arrow">↓</div>`;
+                    }
+                });
+                vizContainer.innerHTML = processHtml;
+            }
+        }
+
+        function initializeApp() {
+            grid.innerHTML = '';
+            // Define the desired order
+            const orderedIds = ['stride', 'dread', 'nist', 'attack', 'attack_trees', 'fmea', 'pasta', 'octave', 'fra'];
+            orderedIds.forEach(id => {
+                if (frameworksData[id]) {
+                    grid.innerHTML += createFrameworkCard(id, frameworksData[id]);
+                }
+            });
+        }
+
+        grid.addEventListener('click', (e) => {
+            const card = e.target.closest('.framework-card');
+            if (card) {
+                const frameworkId = card.getAttribute('data-framework-id');
+                renderDetails(frameworkId);
+            }
+        });
+
+        initializeApp();
+
+    </script>
+</body>
+</html>
