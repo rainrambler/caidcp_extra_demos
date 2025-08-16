@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>CDN攻击演示</title>
+    <!-- 模拟被攻击的CDN，没有integrity属性保护 -->
+    <script>
+        // 模拟被污染的CDN资源
+        console.log("恶意代码已执行！");
+        // 模拟数据窃取
+        document.addEventListener('DOMContentLoaded', function() {
+            // 创建一个假的登录表单
+            document.body.innerHTML += `
+                <form id="login-form">
+                    <input type="text" placeholder="用户名">
+                    <input type="password" placeholder="密码">
+                    <button type="submit">登录</button>
+                </form>
+            `;
+            
+            document.getElementById('login-form').onsubmit = function(e) {
+                e.preventDefault();
+                alert("警告：这是一个演示！在真实攻击中，您的凭据可能已经被窃取。");
+            };
+            
+            document.getElementById('status').textContent = "警告：CDN已被劫持！这表明缺少integrity属性可能导致恶意代码执行。";
+        });
+    </script>
+</head>
+<body>
+    <h1>不安全的CDN加载（演示）</h1>
+    <div id="status" style="color: red;"></div>
+    <div style="margin-top: 20px; padding: 10px; background-color: #ffe6e6; border: 1px solid #ff9999;">
+        <h2>漏洞说明</h2>
+        <p>此页面演示了缺少integrity属性时可能发生的攻击场景：</p>
+        <ul>
+            <li>攻击者可能通过中间人攻击替换CDN内容</li>
+            <li>被污染的CDN可能注入恶意JavaScript代码</li>
+            <li>可能导致用户数据泄露、会话劫持等安全问题</li>
+        </ul>
+        <p><strong>修复建议：</strong> 添加integrity属性并设置正确的哈希值</p>
+    </div>
+</body>
+</html>
