@@ -101,6 +101,29 @@
 - **使用方法**:
     - 运行 `python logging_vuln.py` 并提供包含恶意字符的输入，然后检查生成的日志文件。
 
+### 9. DAST动态应用安全测试演示 (`/DAST演示`)
+
+- **目标**: 演示利用AI大语言模型生成多样化、可绕过简单过滤的攻击载荷，进行动态应用程序安全测试。
+- **内容**:
+    - `app.py`: 一个包含XSS防御机制的Flask应用。
+    - `templates/index.html`: 包含输入框的测试页面。
+    - `README.md`: 详细的操作指南和AI提示词示例。
+- **使用方法**:
+    1. 安装依赖: `pip install -r requirements.txt`
+    2. 运行应用: `python app.py`
+    3. 访问: http://127.0.0.1:5001
+    4. 使用AI生成的绕过载荷进行测试。
+
+### 10. STRIDE威胁建模演示 (`/STRIDE演示`)
+
+- **目标**: 展示如何使用STRIDE方法对多因素认证(MFA)系统进行威胁建模分析。
+- **内容**:
+    - `stride_demo.html`: 威胁建模的交互式演示页面。
+    - `stride_results.md`: 详细的威胁分析报告，包含具体威胁和缓解措施。
+- **使用方法**:
+    - 直接打开`stride_demo.html`查看交互式演示。
+    - 查看`stride_results.md`了解完整的威胁分析结果。
+
 ### 9. Java 死锁演示及修复方法 (`/Java死锁演示及修复方法`)
 
 - **目标**: 通过 Java 代码演示多线程环境下的死锁问题，并提供修复后的版本作为对比。
@@ -158,15 +181,41 @@
 - **使用方法**:
     - 运行 `python code.py` 来执行演示。
 
+### 5. 固定响应时间演示 (`/固定响应时间`)
+
+- **目标**: 展示如何通过固定响应时间来防止基于时间的侧信道攻击。
+- **内容**:
+    - `responseDelay.py`: 完整版实现，包含详细的时间统计和分析。
+    - `responseDelaySimple.py`: 简化版实现，展示核心概念。
+- **使用方法**:
+    - 运行 `python responseDelay.py` 查看随机延迟与固定延迟的对比结果。
+    - 运行 `python responseDelaySimple.py` 了解基本实现原理。
+
 ### 5. 交互式页面展示 (`/交互式页面展示`)
 
 - **目标**: 通过一系列交互式HTML页面，展示不同的概念和系统。
 - **内容**:
-    - `EARS故事生成/`: EARS用户故事生成系统页面。
-    - `上下文工程补充资料/`: 上下文工程相关的资料页面。
-    - `完整性验证与违规处理/`: 完整性验证与违规处理流程展示页面。
+    - `index.html`: 主页面，提供所有演示项目的导航入口。
+    - `EARS故事生成/`: 
+        - `auditsystem.html`: 审计系统用户故事生成演示
+        - `reviewsystem.html`: 评审系统用户故事生成演示
+    - `FuzzGPT/`: 
+        - `fuzzGPT.html`: FuzzGPT模型架构和工作流程展示
+    - `IRIS/`:
+        - `iris.html`: IRIS系统架构和工作原理展示
+    - `Scapel_VS_FuzzGPT/`:
+        - `scapel_vs_fuzzGPT.html`: Scapel和FuzzGPT对比分析
+    - `TitanFuzz/`:
+        - `titanFuzz.html`: TitanFuzz系统架构和特点展示
+    - `上下文工程补充资料/`:
+        - `context_engineering.html`: 上下文工程的核心概念和应用
+    - `完整性验证与违规处理/`:
+        - `integrity_verify.html`: 完整性验证与违规处理流程
+    - `AI驱动安全测试全章结构/`:
+        - `Module6.html`: AI驱动安全测试章节的完整结构
 - **使用方法**:
-    - 直接在浏览器中打开各个子目录下的 `html` 文件即可查看。
+    - 直接在浏览器中打开各个子目录下的 `html` 文件即可查看相应的交互式演示。
+    - 每个页面都提供了详细的说明和交互式的内容展示。
 
 ---
 
@@ -178,7 +227,12 @@
     - `PDD_GBT38674.md`: 是课程基于GB/T38674标准，演示提示词驱动开发（Prompt Driven Development， PDD）的相关示例。
     - `PDD_interact.html`: PDD交互式页面。
 
-### 2. 资源文件 (`/[资源]测试文件`)
+### 2. OWASP ASVS标准应用 (`/OWASP_ASVS`)
+
+- **内容**: 展示如何根据OWASP应用安全验证标准(ASVS)评估和改进应用安全性。
+    - `healthguard.html`: 一个基于ASVS标准进行安全加固的应用示例。
+
+### 3. 资源文件 (`/[资源]测试文件`)
 
 - **内容**: 包含一些用于测试的图片等资源文件。
 
