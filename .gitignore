@@ -2,3 +2,4 @@
 uploads/
 *.class
 injected_ws.txt
+.tmp/
