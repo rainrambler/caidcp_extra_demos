@@ -1,16 +1,4 @@
-# DGA域名检测项目依赖包
-# 基于rf_dgachecker.py文件的导入分析
-
-# 数据处理和分析
-pandas>=1.3.0
-numpy>=1.21.0
-
-# 机器学习
-scikit-learn>=1.0.0
-
-# 数据可视化
-matplotlib>=3.5.0
-seaborn>=0.11.0
-
-# 网络请求和数据下载
-requests>=2.25.0
+pandas
+scikit-learn
+numpy
+joblib

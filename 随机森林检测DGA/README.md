@@ -1,138 +1,111 @@
-# 随机森林辅助DGA域名检测Demo实验
+# 随机森林辅助安全应用示例：DGA域名检测
 
-本实验展示了如何使用随机森林机器学习算法来检测DGA（Domain Generation Algorithm）生成的恶意域名。
+本示例演示如何利用特征工程 + 随机森林(Random Forest)快速构建一个检测可疑 DGA 域名 (Domain Generation Algorithm) 的原型模型。
 
-## 目录
-- [实验目标与原理](#实验目标与原理)
-- [环境准备](#环境准备)
-- [实验步骤](#实验步骤)
-- [代码结构](#代码结构)
-- [运行方法](#运行方法)
-- [实验结果分析](#实验结果分析)
-- [总结与展望](#总结与展望)
+DGA 被僵尸网络广泛用于动态生成 C2 域名以逃避静态黑名单。通过对域名字符分布/结构进行统计学习，可以在缺乏完整上下文的情况下给出可疑概率，为安全分析前置过滤加速。
 
-## 实验目标与原理
+## 数据集
+- 文件：`dga_training_data.csv`
+- 行数：60000（legit 30000 + dga 30000），列：`domain,label`
+- label 取值：`legit` 或 `dga`
 
-### 实验目标
-构建一个基于随机森林的机器学习模型，该模型能够根据从域名字符串中提取的特征，自动判断一个给定的域名是合法域名（legit）还是由域名生成算法（DGA）生成的恶意域名（dga）。
+## 特征工程 (features.py)
+对域名（取核心部分，如倒数第二级 label）提取如下特征：
+1. length: 字符长度
+2. entropy: 香农熵 (字符分布均匀性，高熵更可能是随机 DGA)
+3. vowel_count: 元音数量
+4. digit_count: 数字数量
+5. repeated_char_count: 出现频次>1 的字符总重复次数
+6. max_consecutive_digits: 最长连续数字长度
+7. max_consecutive_consonants: 最长连续非元音字母长度
+8. unique_char_count: 不同字符数
+9. vowel_ratio: 元音占比
+10. digit_ratio: 数字占比
+11. bigram_avg_logp: 在 legit 域名集合上训练出的字符二元组平均对数概率（越低越像随机串）
+12. dict_coverage: 在一个内置小型词典中被匹配覆盖的字符比例（越低越像随机串）
 
-### 核心原理
+> 注：词典与 bigram 模型都极简，仅用于 Demo。实际生产应使用更充足的干净 legit 语料、分词字典以及 TLD 处理、公共后缀列表解析、子域过滤等。
 
-**DGA域名的特征：** DGA为了大规模生成不易被预测和封禁的域名，其产物通常在字符组合上呈现出"随机性"，而正常的人类可读的域名则具有一定的语言学规律。例如，DGA域名可能包含更多不常见的字符组合、更高的数字比例以及更混乱的字符分布。
+## 训练脚本 (train_dga_rf.py)
+提供两个子命令：
+- 训练：`python train_dga_rf.py train --csv dga_training_data.csv --out model_artifacts`
+- 预测：`python train_dga_rf.py predict --domain exampletest123.com --model-dir model_artifacts`
 
-**特征工程：** 我们可以量化这些"随机性"和"规律性"的差异。例如，信息熵（Entropy）是衡量信息混乱程度的绝佳指标，随机字符串的熵通常更高。域名长度、元音/数字比例等也是简单有效的度量。
+训练完成后会在输出目录写入：
+- `dga_rf_model.joblib`：包含 sklearn RandomForest 模型与特征名称
+- `bigram_probs.json`：legit 域名统计得到的 bigram 概率（简易平滑）
 
-**随机森林：** 随机森林是一种集成学习算法，由多个决策树构成。它非常适合处理我们提取的这类表格型、混合类型的特征数据，具有不易过拟合、稳定性好，并且能够输出特征重要性的优点，完美契合我们的需求。
-
-## 环境准备
-
-### 安装依赖
-确保你的Python环境中安装了以下库：
-
-```bash
+## 依赖安装
+```
 pip install -r requirements.txt
 ```
 
-或者手动安装：
+`requirements.txt` 内容：`pandas scikit-learn numpy joblib`
 
+## 运行示例
 ```bash
-pip install pandas scikit-learn numpy matplotlib seaborn
+# 1. 训练
+python 随机森林检测DGA/train_dga_rf.py train --csv 随机森林检测DGA/dga_training_data.csv --out 随机森林检测DGA/model_artifacts
+
+# 2. 单域名预测
+python 随机森林检测DGA/train_dga_rf.py predict --domain cloud.gist.build --model-dir 随机森林检测DGA/model_artifacts
+python 随机森林检测DGA/train_dga_rf.py predict --domain 1df5hr42x3s651dgh56tdbq6bs.org --model-dir 随机森林检测DGA/model_artifacts
+
+# 3. 快速批量测试
+python 随机森林检测DGA/quick_test.py --model-dir 随机森林检测DGA/model_artifacts
 ```
 
-### 依赖说明
-- **pandas**: 用于数据处理和管理
-- **scikit-learn**: 用于构建、训练和评估机器学习模型
-- **numpy**: 用于高效的数值计算
-- **matplotlib & seaborn**: 用于数据可视化，尤其是展示特征重要性
-
-## 实验步骤
-
-### 步骤一：准备数据集
-创建一个包含合法域名和DGA域名的小型示例数据集。在真实场景中，你需要大量的已知DGA域名和合法域名（例如从Alexa Top 1 Million列表获取）。
-
-### 步骤二：实现特征工程
-从域名字符串中提取以下核心特征：
-
-1. **域名长度 (Length)**: 域名字符串的总长度
-2. **数字比例 (Digit Ratio)**: 域名中数字（0-9）所占的比例
-3. **元音比例 (Vowel Ratio)**: 域名中元音字母（aeiou）所占的比例
-4. **信息熵 (Entropy)**: 衡量域名字符串的随机/混乱程度
-
-信息熵的计算公式为：
-
-$$H(X) = -\sum_{i=1}^{n} P(x_i) \log_2 P(x_i)$$
-
-其中 $P(x_i)$ 是字符 $x_i$ 在字符串中出现的概率。
-
-### 步骤三：模型训练
-1. 加载数据并应用特征工程函数，将每个域名转换成特征向量
-2. 将数据集分割为训练集和测试集
-3. 初始化RandomForestClassifier模型
-4. 使用训练集对模型进行训练
-
-### 步骤四：模型评估与分析
-1. 使用训练好的模型对测试集进行预测
-2. 计算模型的准确率、精确率、召回率等指标
-3. 获取并可视化特征重要性
-
-## 代码结构
-
-项目包含以下文件：
-```
-随机森林检测DGA/
-├── rf_dgachecker.py    # 主要的实验代码
-├── requirements.txt    # 项目依赖
-└── README.md          # 项目说明文档
-```
-
-## 运行方法
-
-1. 确保已安装所有依赖包：
+输出示例：
 ```bash
-pip install -r requirements.txt
+=== Evaluation Metrics ===
+accuracy: 0.98xx
+precision: 0.98xx
+recall: 0.98xx
+f1: 0.98xx
+roc_auc: 0.99xx
+...
+Domain: 1df5hr42x3s651dgh56tdbq6bs.org
+Predicted label: dga
+Probability DGA: 0.9973
+Top feature signals (heuristic):
+  entropy: ...
+  bigram_avg_logp: ...
+  vowel_ratio: ...
+  ...
+
+1df5hr42x3s651dgh56tdbq6bs.org           -> dga   (p_dga=1.0000)
+675wwi1hb3y9w1griggr1vxpg33.net          -> dga   (p_dga=1.0000)
+cloud.gist.build                         -> legit (p_dga=0.0000)
+knotch.it                                -> legit (p_dga=0.0000)
+auth.example.com                         -> legit (p_dga=0.0000)
+
+Enter domains line-by-line (empty line to exit):
+> www.csa-c.cn
+www.csa-c.cn                             -> legit (p_dga=0.0000)
+> asdklfjasl234kj232j4l2kjkl.com     
+asdklfjasl234kj232j4l2kjkl.com           -> dga   (p_dga=0.7200)
 ```
+(实际数值视随机种子略有差异。)
 
-2. 运行主程序：
-```bash
-python rf_dgachecker.py
-```
+## 设计说明
+- 使用 RandomForest 原因：鲁棒、可解释性较好（可查看特征重要性）、对特征缩放不敏感、实现简单。
+- bigram_avg_logp 有助于捕获合法域名字符转移模式；DGA 往往表现为低概率组合。
+- dict_coverage 让模型识别可读词片段，提升对正常品牌/业务域名的识别。
+- 可扩展：加入 TLD 类别、子域深度、3-gram、马尔科夫模型、字符类别转移计数、Alexa/toplist rank、WHOIS / DNS 查询 (需要在线数据) 等。
 
-## 实验结果分析
+## 局限与改进
+1. 词典规模与语料有限——真实环境需更全面的合法域名库。
+2. 未处理 punycode / IDN 域名。
+3. 没有时间序列、解析结果 (A/NS/MX) 与流量行为特征。
+4. 阈值简单取 0.5，可根据 ROC/PR 调优以控制 FP/FN。
+5. 未做特征漂移监控，需要定期再训练。
 
-### 模型性能
-模型在测试集上能够达到很高的准确率，并输出详细的分类报告。
+## 下一步可扩展建议
+- 使用 `LightGBM` / `XGBoost` 对比性能。
+- 引入 `n-gram language model`（3-gram/4-gram）概率向量。
+- 构建一个批量预测/REST API 服务端。
+- 引入 Explainable AI（SHAP / LIME）展示单样本解释。
+- 加入模型版本化与评估报告自动生成。
 
-### 特征重要性
-实验会生成特征重要性的可视化图表，通常会显示：
-- **entropy（熵）** 和 **digit_ratio（数字比例）** 是判断DGA最重要的特征
-- 这与先验知识完全吻合：DGA域名看起来更随机（熵高），并且常常混入数字以增加复杂性
-
-### 实际应用价值
-这个洞察可以直接帮助安全分析师：
-- **制定规则**: 即使不使用机器学习，也可以制定基于高熵和高数字比例的简单规则来初步筛选可疑域名
-- **提高认知**: 确认了哪些特征是区分恶意与良性行为的关键，加深了对威胁的理解
-
-## 总结与展望
-
-### 价值体现
-这个Demo完美展示了随机森林的优势：
-- **性能优异**: 能够很好地处理这些简单的数值特征
-- **可解释性强**: feature_importances_ 属性提供了宝贵的、可操作的洞察，弥合了复杂模型与实际安全运营之间的鸿沟
-
-### 后续扩展
-这个迷你Demo是一个很好的起点，要构建生产级别的系统，可以从以下几方面进行扩展：
-
-1. **扩充数据集**: 使用数百万级别的真实DGA域名和合法域名来训练模型，提高其泛化能力和鲁棒性
-
-2. **丰富特征维度**:
-   - **N-gram频率**: 计算域名中常见（或不常见）的二元、三元字母组合的频率，与大型语料库（如英文维基百科）进行对比
-   - **顶级域名（TLD）信息**: 某些TLD（如 .xyz, .top）可能更常被用于恶意活动
-   - **域名元数据**: 结合WHOIS信息、DNS记录等进行综合判断
-
-3. **模型调优**: 使用交叉验证和网格搜索（GridSearchCV）来寻找随机森林的最佳超参数（如决策树的数量n_estimators、树的最大深度max_depth等）
-
-## 许可证
-本项目仅用于教育和演示目的。
-
-## 贡献
-欢迎提交问题和改进建议！
+## 许可
+本示例仅用于教学与研究目的，禁止用于绕过安全监测或任何恶意用途。

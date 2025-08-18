@@ -1,2 +1,2 @@
-dga_training_data.csv
-dga_rf_model.joblib
+__pycache__
+model_artifacts
