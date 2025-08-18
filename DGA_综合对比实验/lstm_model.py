@@ -21,3 +21,26 @@ class DomainLSTM(nn.Module):
         h_cat = self.dropout(h_cat)
         logits = self.fc(h_cat)
         return logits.squeeze(-1)
+
+    def forward_with_states(self, x):
+        """Return logits plus intermediate states for explanation.
+        Returns dict with:
+          embeddings: (B, T, E)
+          lstm_out: (B, T, H*(2 if bi else 1))
+          final_hidden: (B, H*(2 if bi else 1)) before FC
+          logits: (B,)
+        """
+        emb = self.embedding(x)
+        lstm_out, (h, c) = self.lstm(emb)
+        if self.lstm.bidirectional:
+            h_cat = torch.cat([h[-2], h[-1]], dim=-1)
+        else:
+            h_cat = h[-1]
+        h_drop = self.dropout(h_cat)
+        logits = self.fc(h_drop).squeeze(-1)
+        return {
+            'embeddings': emb,
+            'lstm_out': lstm_out,
+            'final_hidden': h_cat,
+            'logits': logits
+        }

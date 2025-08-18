@@ -134,46 +134,24 @@ knotch.it                                -> legit (p_dga=0.xxx)
 
 ```mermaid
 flowchart LR
-  subgraph Classical[传统模型 - 特征工程驱动]
-    A[原始域名字符串] --> B[FeatureExtraction\\n(features.py)] --> C[数值特征向量]
-    C --> D{模型选择}
-    D --> RF[RandomForest]
-    D --> XGB[XGBoost]
-    RF & XGB --> F[(预测概率 / 标签)]
-  end
-
-  subgraph DL[LSTM - 端到端序列]
-    A2[原始域名字符串] --> B2[字符索引化]
-    B2 --> C2[Embedding]
-    C2 --> LSTM[LSTM(可多层/双向)] --> FC[FC + Sigmoid] --> F2[(预测概率 / 标签)]
-  end
-
-  style Classical fill:#f5f5f5,stroke:#999
-  style DL fill:#f0f9ff,stroke:#339
+  A[原始域名] --> B[特征提取 features.py] --> C[特征向量] --> D[RandomForest / XGBoost] --> E[(预测)]
+  A2[原始域名] --> B2[字符索引化] --> C2[Embedding] --> L[LSTM] --> E2[(预测)]
 ```
+> 若仍无法渲染（某些 Markdown 引擎内置 Mermaid 版本较旧），请使用下方 ASCII 流程或手动在 mermaid.live 在线查看。
 
 #### 2) 特征工程循环 vs 端到端训练循环
 
 ```mermaid
 flowchart TD
-  H[提出新假设\\n(例如新增熵分位数?)] --> Dsg[设计/实现特征] --> Ext[抽取特征] --> Trn[训练 RF/XGB] --> Eval[验证指标]
-  Eval -->|不足/过拟合| H
+  H[提出假设] --> Dsg[设计特征] --> Ext[抽取特征] --> Trn[训练树模型] --> Eval[验证]
+  Eval -->|不足| H
   Eval -->|满意| Dep[部署]
-
-  subgraph Legend1[经典特征工程循环]
-    H --> Dsg --> Ext --> Trn --> Eval --> Dep
-  end
 ```
 
 ```mermaid
 flowchart TD
-  Arch[设定结构\\n(Embed/层数/隐藏维度)] --> Train[端到端训练(反向传播)] --> Eval2[验证F1]
-  Eval2 -->|指标不佳| Arch
-  Eval2 -->|可接受| Deploy2[部署]
-
-  subgraph Legend2[LSTM 端到端循环]
-    Arch --> Train --> Eval2 --> Deploy2
-  end
+  Arch[设定结构] --> Train[端到端训练] --> Eval2[验证] -->|满意| Deploy2[部署]
+  Eval2 -->|不佳| Arch
 ```
 
 #### 3) ASCII 简化视图
@@ -221,6 +199,48 @@ python DGA_综合对比实验/compare_models.py --csv DGA_综合对比实验/dga
 # 4. 交互测试
 python DGA_综合对比实验/interactive_predict.py --classical-dir DGA_综合对比实验/artifacts_classical --lstm-dir DGA_综合对比实验/artifacts_lstm --model rf
 ```
+
+## 解释与可视化 (特征重要性 vs 序列显著性)
+新增 `explain.py` 支持对同一个域名并排展示：
+1. 树模型 (RF/XGB) 的手工特征重要性贡献 (feature_value * importance)
+2. LSTM 每个字符的梯度范数 (saliency) + 对应时间步隐藏状态向量范数
+
+用法示例：
+```bash
+python DGA_综合对比实验/explain.py \
+  --classical-dir DGA_综合对比实验/artifacts_classical \
+  --lstm-dir DGA_综合对比实验/artifacts_lstm \
+  --domain 1df5hr42x3s651dgh56tdbq6bs.org \
+  --model rf
+```
+输出片段示例：
+```
+=== Classical Feature Contributions (sorted by |value*importance|) ===
+Feature                           Value       Imp   Value*Imp
+entropy                           4.1800    0.1200      0.5016
+length                           25.0000    0.0600      1.5000
+... (截断)
+
+=== LSTM Token Saliency & Hidden State Norms ===
+Predicted p(dga)=0.9998
+00 1  grad:0.4521 ████████   hid:1.2034 ▓▓▓▓▓▓▓▓
+01 d  grad:0.3010 ██████     hid:0.9987 ▓▓▓▓▓▓▓
+02 f  grad:0.2805 █████      hid:0.9500 ▓▓▓▓▓▓
+... (逐字符)
+```
+含义：
+- grad 列：对该字符嵌入的梯度 L2 范数，作为 saliency（对当前输出最敏感的字符会更大）。
+- hid 列：LSTM 输出隐藏状态向量的 L2 范数，用于观察时间步激活强度。
+
+注意：
+- 梯度显著性是局部一阶近似，不等价于因果删除影响；可与随机扰动或积分梯度进一步对比。
+- 若想加入积分梯度，可扩展在 `explain.py` 中对 embedding 做 baseline=全零 或 PAD 序列的多步插值。
+
+后续可扩展：
+- 保存 saliency JSON 以便前端着色展示
+- 集成 SHAP (树模型) + Integrated Gradients (LSTM) 融合报告
+- 将隐藏状态降维 (PCA/TSNE/UMAP) 可视化模式聚类
+
 
 ## 许可证
 仅供教学与研究，禁止用于恶意用途。
