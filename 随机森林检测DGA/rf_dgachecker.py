@@ -20,8 +20,8 @@ import logging
 DATA_CONFIG = {
     "cache_file": 'dga_training_data.csv',
     "legit_url": 'https://s3-us-west-1.amazonaws.com/umbrella-static/top-1m.csv.zip',
-    "dga_url": 'https://raw.githubusercontent.com/mitre-attack/attack-dga/main/data/dga_domains.txt',
-    "sample_size": 20000
+    "dga_url": 'https://github.com/sph116/DGA_domain_test/blob/master/zeus_dga_domains.txt',
+    "sample_size": 30000
 }
 
 MODEL_CONFIG = {
