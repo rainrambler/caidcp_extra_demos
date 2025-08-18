@@ -28,9 +28,8 @@
     - `安全审计报告.md`: 对该漏洞的详细分析和修复建议。
 - **使用方法**:
     1. 运行 `pip install -r requirements.txt` (如果需要)。
-    2. 运行 `python cmd_injection_vuln.py` 启动服务。
-    3. 访问 `http://127.0.0.1:5000/?host=127.0.0.1; touch injected.txt` 来触发漏洞。
-
+    2. 运行 `python cmd_injection_vuln.py` 触发漏洞。
+    
 ### 2. XXE 漏洞 (`/XXE漏洞`)
 
 - **目标**: 演示 XML 外部实体注入（XXE）漏洞，攻击者可利用此漏洞读取服务器上的任意文件。
@@ -40,7 +39,7 @@
     - `安全审计报告.md`: 漏洞分析与修复方案。
 - **使用方法**:
     1. 运行 `python XXE_vuln.py`。
-    2. 使用 `curl` 或其他工具发送恶意的 XML 数据包来读取 `secret.txt`。
+    2. 可以看到 `secret.txt` 的内容被成功读取。
 
 ### 3. 密钥硬编码漏洞 (`/密钥硬编码漏洞`)
 
@@ -70,7 +69,18 @@
     - `安全审计报告.md`: 漏洞分析报告。
 - **使用方法**:
     1. 运行 `python ws_server_vuln.py` 启动服务器。
-    2. 运行 `python ws_client.py` 并输入恶意命令（如 `127.0.0.1; touch injected_ws.txt`）进行攻击。
+    2.  python vuln_ws_server.py          # 终端1：启动服务
+    3.  尝试如下命令：
+        ```Bash
+        python ws_client.py "."           # 终端2：正常列目录
+        ```
+        ```Bash
+        python ws_client.py ".; touch injected_ws.txt"   # Linux 触发注入（创建文件）
+        ```
+        ```powershell
+        python ws_client.py ". & echo INJECTED> injected_ws.txt" # Windows触发注入（创建文件）
+        ```
+    4. 查看当前目录下是否生成了 `injected_ws.txt` 文件。
 
 ### 6. XSS 漏洞 (`/XSS漏洞`)
 
@@ -80,7 +90,7 @@
     - `安全审计报告.md`: 漏洞分析与修复方案。
 - **使用方法**:
     1. 运行 `python XSS_vuln.py`。
-    2. 在输入框中提交恶意脚本（如 `<script>alert('XSS')</script>`）来触发漏洞。
+    2. 通过访问`http://127.0.0.1:5000/?name=<script>alert('XSS')</script>`来触发漏洞。
 
 ### 7. 上传文件漏洞 (`/上传文件漏洞`)
 
@@ -90,7 +100,15 @@
     - `poc.html`: 用于攻击的验证页面。
     - `安全审计报告.md`: 漏洞分析与修复建议。
 - **使用方法**:
-    - 运行 `python upload_vuln.py` 并使用 `poc.html` 上传文件，尝试将文件写入任意位置。
+    - 运行 `python upload_vuln.py` 
+    - 通过如下方式触发攻击：
+    ```Bash
+    curl -F "file=@poc.html;filename=../../overwritten.html;type=text/html" http://127.0.0.1:5000/upload
+    ```
+    ```Powershell
+    .\Path_Traversal.ps1
+    ```
+    - 可以发现`overwrite.html`文件在上层目录被成功创建。   
 
 ### 8. 日志漏洞 (`/日志漏洞`)
 
@@ -99,7 +117,20 @@
     - `logging_vuln.py`: 将用户输入直接写入日志的示例。
     - `安全审计报告.md`: 分析日志注入的风险和防范措施。
 - **使用方法**:
-    - 运行 `python logging_vuln.py` 并提供包含恶意字符的输入，然后检查生成的日志文件。
+    - 运行 `python logging_vuln.py`。
+    - 通过如下方式触发日志，观察日志内容暴露出来的敏感信息：
+    ```bash
+    # Linux/Mac:
+    curl -s -X POST http://127.0.0.1:5000/login \
+      -H 'Content-Type: application/json' \
+      -d '{"username":"alice","password":"SuperSecret123","otp":"123456"}'
+    ```
+    ```Powershell
+    # Windows:
+    Invoke-RestMethod -Method POST -Uri http://127.0.0.1:5000/login `
+      -ContentType 'application/json' `
+      -Body '{"username":"alice","password":"SuperSecret123","otp":"123456"}'
+    ```
 
 ### 9. DAST动态应用安全测试演示 (`/DAST演示`)
 
@@ -114,17 +145,7 @@
     3. 访问: http://127.0.0.1:5001
     4. 使用AI生成的绕过载荷进行测试。
 
-### 10. STRIDE威胁建模演示 (`/STRIDE演示`)
-
-- **目标**: 展示如何使用STRIDE方法对多因素认证(MFA)系统进行威胁建模分析。
-- **内容**:
-    - `stride_demo.html`: 威胁建模的交互式演示页面。
-    - `stride_results.md`: 详细的威胁分析报告，包含具体威胁和缓解措施。
-- **使用方法**:
-    - 直接打开`stride_demo.html`查看交互式演示。
-    - 查看`stride_results.md`了解完整的威胁分析结果。
-
-### 11. Java 死锁演示及修复方法 (`/Java死锁演示及修复方法`)
+### 10. Java 死锁演示及修复方法 (`/Java死锁演示及修复方法`)
 
 - **目标**: 通过 Java 代码演示多线程环境下的死锁问题，并提供修复后的版本作为对比。
 - **内容**:
@@ -143,7 +164,7 @@
 
 ### 1. 文件上传演示 (`/FileUploadDemo`)
 
-- **目标**: 提供一个基础的文件上传功能实现。
+- **目标**: 通过提示词演示`资源使用安全-文件管理`的简单提示词，生成的一个基础的文件上传功能实现。
 - **内容**:
     - `app.py`: 实现了文件上传功能的 Flask 应用。
     - `templates/index.html`: 前端上传页面。
@@ -154,7 +175,7 @@
 
 ### 2. 安全文件上传（`/SecureFileUpload`）
 
-- **目标**: 提供符合《GB/T 38674》文件管理安全要求的强化版图片上传实现，作为 `/上传文件漏洞` 漏洞示例的安全对照。
+- **目标**: 通过提示词演示`资源使用安全-文件管理`的完整提示词，生成符合《GB/T 38674》文件管理安全要求的强化版图片上传实现，作为 `/FileUploadDemo` 示例的安全对照。
 - **核心安全特性**:
         1. 路径安全: 使用 `secure_filename` + 目录约束 + 绝对路径校验防止路径遍历。
         2. 类型双重校验: 扩展名白名单 + Magic Number 校验（PNG/JPG）。
@@ -246,6 +267,13 @@
         - `integrity_verify.html`: 完整性验证与违规处理流程
     - `AI驱动安全测试全章结构/`:
         - `Module6.html`: AI驱动安全测试章节的完整结构
+    - `安全测试目标流派/`:
+        - `secure_test.html`: （第六章）安全测试目标与流派对比展示页面
+    - `STRIDE演示/`:
+        - `stride_demo.html`: （第六章）使用STRIDE方法对MFA系统进行威胁建模的交互演示
+        - `stride_results.md`: 威胁分析结果与缓解措施说明
+    - `OWASP_ASVS/`:
+        - `healthguard.html`: （第六章）基于OWASP ASVS标准的安全加固示例应用
 - **使用方法**:
     - 直接在浏览器中打开各个子目录下的 `html` 文件即可查看相应的交互式演示。
     - 每个页面都提供了详细的说明和交互式的内容展示。
@@ -260,12 +288,7 @@
     - `PDD_GBT38674.md`: 是课程基于GB/T38674标准，演示提示词驱动开发（Prompt Driven Development， PDD）的相关示例。
     - `PDD_interact.html`: PDD交互式页面。
 
-### 2. OWASP ASVS标准应用 (`/OWASP_ASVS`)
-
-- **内容**: 展示如何根据OWASP应用安全验证标准(ASVS)评估和改进应用安全性。
-    - `healthguard.html`: 一个基于ASVS标准进行安全加固的应用示例。
-
-### 3. 资源文件 (`/[资源]测试文件`)
+### 2. 资源文件 (`/[资源]测试文件`)
 
 - **内容**: 包含一些用于测试的图片等资源文件。
 
