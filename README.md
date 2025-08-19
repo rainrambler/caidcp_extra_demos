@@ -11,6 +11,7 @@
 
 - **安全漏洞示例 (Security Vulnerability Examples)**
 - **功能演示 (Feature Demos)**
+- **智能检测与机器学习实验 (AI Detection & ML Experiments)**
 - **其他资源 (Other Resources)**
 
 ---
@@ -277,6 +278,58 @@
 - **使用方法**:
     - 直接在浏览器中打开各个子目录下的 `html` 文件即可查看相应的交互式演示。
     - 每个页面都提供了详细的说明和交互式的内容展示。
+ 
+ ---
+
+## 智能检测与机器学习实验 (AI Detection & ML Experiments)
+
+本章节聚焦安全智能检测场景下的机器学习 / 深度学习基线与对比实验，强调可复现、端到端与教学友好。
+
+### 1. GNN 横向移动威胁检测示范 (`/GNN示范`)
+
+- **目标**: 利用图神经网络（GCN, PyTorch Geometric）在抽象“用户-计算机”混合图上进行风险节点（用户/主机）识别，演示图结构在横向移动攻击链挖掘中的优势。
+- **内容**:
+  - `gnn_demo.py`: 构建两跳链（源计算机 -> 用户 -> 目标计算机）、定义 GCN、训练与推理。
+  - `requirements.txt`: 依赖（含 `torch` 与 `torch-geometric`；PyG 请按官方指引选择与当前 Python / CUDA 版本匹配的轮子）。
+  - `README.md`: 图建模思路、特征与实验流程说明。
+- **运行**:
+  ```powershell
+  cd GNN示范
+  pip install -r requirements.txt
+  python gnn_demo.py
+  ```
+  输出训练损失 / 指标与高风险节点预测列表。
+- **核心要点**:
+  - 小型可复现实验子集，降低环境门槛
+  - 节点分类直接输出风险实体概率
+  - 结构可扩展至 GraphSAGE / GAT / 时间切片 / 异构关系
+- **扩展方向**: Temporal Graph、注意力 (GAT)、多任务（阶段标签 + 风险分）、异常子图检测、与 SIEM / 威胁情报融合。
+
+### 2. DGA 域名检测综合对比实验 (`/DGA_综合对比实验`)
+
+- **目标**: 对比传统手工特征 + 树模型（RandomForest / XGBoost）与端到端字符序列 LSTM 在 DGA 域名检测中的性能与可解释性，形成多层次教学基线。
+- **内容**:
+  - 数据: `dga_training_data.csv`（约 60K 行，良性 : DGA 1:1）
+  - 特征工程: `features.py`（长度/字符熵/字符类别比例等）
+  - 经典模型: `train_classical.py`（训练 RF & XGBoost，产物存放 `artifacts_classical/`）
+  - 深度学习: `train_lstm.py` / `lstm_model.py`（字符嵌入 + LSTM，权重在 `artifacts_lstm/`）
+  - 对比 / 解释: `compare_models.py`、`explain.py`、`模型对比解释案例.md`
+  - 交互演示: `interactive_predict.py`（输入域名即时预测）
+  - 统一依赖: `requirements.txt`
+- **典型流程**:
+  ```powershell
+  cd DGA_综合对比实验
+  pip install -r requirements.txt
+  python train_classical.py
+  python train_lstm.py
+  python compare_models.py
+  python interactive_predict.py
+  ```
+- **核心要点**:
+  - 同一数据划分保证对比公平
+  - 展示“特征工程 + 树”与“端到端表征”在效果 / 训练成本 / 解释性上的权衡
+  - 交互脚本便于课堂实时演示
+- **扩展方向**: Transformer / CNN 模型、在线特征流水线、SHAP / LIME 深度解释、数据漂移监测、stacking 集成。
 
 ---
 
