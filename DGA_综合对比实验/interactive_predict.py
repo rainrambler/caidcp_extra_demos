@@ -59,6 +59,27 @@ def loop(args):
         'knotch.it',
         'auth.example.com'
     ]
+    # # 测试更具代表性的域名 - 包含真正的DGA模式
+    # samples = [
+    #     # 原始测试域名
+    #     'mysecurebank.com', 
+    #     '8dfg9hsd8fgy3.com', 
+    #     'download-software.net', 
+    #     'qwertyasdfgzxcvb.cn',
+        
+    #     # 更明显的DGA域名
+    #     'x7k2m9n4p1q8.info',          # 高随机性，数字字母混合
+    #     'aaaaabbbbccccc.org',         # 重复字符模式
+    #     'zxcvbnmasdfgh.net',          # 键盘随机按键
+    #     'q1w2e3r4t5y6u7i8o9.com',    # 长随机序列
+    #     'jhgfdsapoiuytrewq.biz',      # 反向键盘序列
+        
+    #     # 明显的合法域名
+    #     'google.com',
+    #     'microsoft.com',
+    #     'stackoverflow.com'
+    # ]
+
     print(f"Running initial sample predictions with model={model_type}:")
     for d in samples:
         label, prob = predict_domain(d, model_type, dirs, device)
