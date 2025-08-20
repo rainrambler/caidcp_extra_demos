@@ -12,6 +12,7 @@ from sklearn.preprocessing import LabelEncoder
 import networkx as nx
 import matplotlib.pyplot as plt
 from io import StringIO
+import numpy as np
 
 # --- 2. 实验数据 ---
 # 我们将使用一个经过简化的、源自LANL开源数据集的子集。
@@ -82,14 +83,15 @@ def build_graph_data(log_df, node_df, node_encoder):
 
     # --- 边索引 (Edge Index) ---
     # 【关键修正】我们构建两种关系: src -> user 和 user -> dst 来形成完整的事件链
-    src_nodes_mapped = node_encoder.transform(log_df['src'])
+    src_nodes_mapped = node_encoder.transform(log_df['src'])  # numpy ndarray
     user_nodes_mapped = node_encoder.transform(log_df['user'])
     dst_nodes_mapped = node_encoder.transform(log_df['dst'])
-    
-    # 边类型1: 源计算机 -> 用户
-    edges_from_src = torch.tensor([src_nodes_mapped, user_nodes_mapped], dtype=torch.long)
-    # 边类型2: 用户 -> 目标计算机
-    edges_to_dst = torch.tensor([user_nodes_mapped, dst_nodes_mapped], dtype=torch.long)
+
+    # 边类型1: 源计算机 -> 用户  / 边类型2: 用户 -> 目标计算机
+    # 避免 PyTorch 关于 "Creating a tensor from a list of numpy.ndarrays is extremely slow" 的警告，
+    # 先使用 numpy 堆叠为单一 ndarray，再一次性转换为 tensor（共享内存，效率更高）。
+    edges_from_src = torch.from_numpy(np.vstack((src_nodes_mapped, user_nodes_mapped))).long()
+    edges_to_dst = torch.from_numpy(np.vstack((user_nodes_mapped, dst_nodes_mapped))).long()
     
     # 合并两种边，构建完整的图连接关系
     edge_index = torch.cat([edges_from_src, edges_to_dst], dim=1)
