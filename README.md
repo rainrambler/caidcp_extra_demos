@@ -72,6 +72,7 @@
     1. 运行 `python ws_server_vuln.py` 启动服务器。
     2.  python vuln_ws_server.py          # 终端1：启动服务
     3.  尝试如下命令：
+
         ```Bash
         python ws_client.py "."           # 终端2：正常列目录
         ```
@@ -81,6 +82,7 @@
         ```powershell
         python ws_client.py ". & echo INJECTED> injected_ws.txt" # Windows触发注入（创建文件）
         ```
+
     4. 查看当前目录下是否生成了 `injected_ws.txt` 文件。
 
 ### 6. XSS 漏洞 (`/XSS漏洞`)
