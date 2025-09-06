@@ -197,11 +197,14 @@
     Pillow==10.0.0
     ```
 - **关键环境变量（可选）**:
+- 
     | 变量名 | 作用 | 示例 |
     | ------ | ---- | ---- |
     | FLASK_SECRET_KEY | 自定义会话密钥 | `set FLASK_SECRET_KEY=yourhexkey` |
     | FLASK_DEBUG | 开启调试（开发环境） | `set FLASK_DEBUG=1` |
+
 - **使用方法**:
+  
         1. 进入目录: `cd SecureFileUpload`
         2. 安装依赖: `pip install -r requirements.txt`
         3. （可选）设置会话密钥: `set FLASK_SECRET_KEY=$(python -c "import secrets;print(secrets.token_hex(32))")`
@@ -209,6 +212,7 @@
         5. 访问: `http://127.0.0.1:5000/`
         6. 查看日志: 打开同目录下的 `upload.log`
 - **与漏洞版本对比**:
+  
         | 维度 | `/上传文件漏洞/upload_vuln.py` | `/SecureFileUpload/app.py` |
         | ---- | ----------------------------- | ------------------------- |
         | 路径校验 | 可能缺失 | 严格限制到固定目录 |
